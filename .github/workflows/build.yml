@@ -20,22 +20,29 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
+
+      - name: Gradle wrapper çalıştırılabilir yap
+        run: chmod +x gradlew
+
       - name: Gradle cache
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: gradle-
-
-      - name: Gradle wrapper çalıştırılabilir yap
-        run: chmod +x gradlew
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
       - name: Debug APK derle
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace --info 2>&1 | tail -100
 
-      - name: APK'yı artifact olarak yükle
+      - name: APK dosyasını bul
+        run: find . -name "*.apk" -type f
+
+      - name: APK yükle
         uses: actions/upload-artifact@v4
         with:
           name: TvLiveMatch-debug
