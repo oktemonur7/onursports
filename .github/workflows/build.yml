@@ -37,14 +37,14 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Debug APK derle
-        run: ./gradlew assembleDebug --stacktrace --info 2>&1 | tail -100
+        run: ./gradlew assembleDebug --stacktrace
 
-      - name: APK dosyasını bul
-        run: find . -name "*.apk" -type f
+      - name: APK dosyasını bul (debug)
+        run: find . -name "*.apk" -type f 2>/dev/null || echo "APK bulunamadi"
 
       - name: APK yükle
         uses: actions/upload-artifact@v4
         with:
           name: TvLiveMatch-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: "**/*.apk"
           retention-days: 30
