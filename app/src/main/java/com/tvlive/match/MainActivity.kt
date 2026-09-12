@@ -99,17 +99,36 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Web client (hata yönetimi, external link engelleme)
+        val desktopUA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        val uaOverrideScript = """
+            (function() {
+                try {
+                    Object.defineProperty(navigator, 'userAgent', {
+                        get: function() { return '$desktopUA'; },
+                        configurable: true
+                    });
+                } catch(e) {}
+            })();
+        """.trimIndent()
+
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 val url = request.url.toString()
-                // assets içindeki sayfalar serbest
                 if (url.startsWith("file://")) return false
-                // Dış URL'leri WebView içinde aç (iframe kaynakları)
                 return false
+            }
+
+            override fun onPageStarted(view: WebView, url: String, favicon: android.graphics.Bitmap?) {
+                // navigator.userAgent'ı her sayfada (iframe dahil) override et
+                view.evaluateJavascript(uaOverrideScript, null)
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
                 android.util.Log.e("WebViewError", "Error: ${error.description} → ${request.url}")
+            }
+
+            override fun onReceivedSslError(view: WebView, handler: android.webkit.SslErrorHandler, error: android.net.http.SslError) {
+                handler.proceed() // SSL hatalarını geç
             }
         }
 

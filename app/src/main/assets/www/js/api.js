@@ -14,7 +14,8 @@ function resolveKobraSourceUrl(srcObj) {
   const sid = (srcObj.id || '').toString().trim();
   if (!sid) return null;
   if (srcType) {
-    return `${KOBRA_PLAYER_BASE}${EMBED_BASE}${srcType}/${sid}/1`;
+    // Direkt embed.st — hesgoal.team aracısını atlıyoruz
+    return `${EMBED_BASE}${srcType}/${sid}/1`;
   }
   return null;
 }
