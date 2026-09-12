@@ -48,7 +48,36 @@ const EXCLUDE_PATTERNS = [
   /\bu\s*18\b/i, /\bu-18\b/i, /\bu18\b/i,
   /\bu\s*17\b/i, /\bu-17\b/i, /\bu17\b/i,
   /\bu\s*16\b/i, /\bu-16\b/i, /\bu16\b/i,
-  /\bu\s*15\b/i, /\bu-15\b/i, /\bu15\b/i
+  /\bu\s*15\b/i, /\bu-15\b/i, /\bu15\b/i,
+
+  // İstenmeyen spor türleri
+  /\bbasket\b/i,
+  /\bbasketball\b/i,
+  /\bnba\b/i,
+  /\beuroleague\b/i,
+  /\btennis\b/i,
+  /\btenis\b/i,
+  /\batp\b/i,
+  /\bwta\b/i,
+  /\bamerican[- ]?football\b/i,
+  /\bnfl\b/i,
+  /\bfight\b/i,
+  /\bufc\b/i,
+  /\bmma\b/i,
+  /\bboxing\b/i,
+  /\bboks\b/i,
+  /\bmotor[- ]?sports?\b/i,
+  /\bmotorsport\b/i,
+  /\bformula[- ]?1\b/i,
+  /\bf1\b/i,
+  /\bmotogp\b/i,
+  /\bgrand prix\b/i,
+  /\bnascar\b/i,
+  /\brugby\b/i,
+  /\bafl\b/i,
+  /\bbaseball\b/i,
+  /\bmlb\b/i,
+  /\bcricket\b/i
 ];
 
 function isExcludedMatch(match) {
@@ -143,6 +172,9 @@ function normalizeMatch(raw, server) {
     }
   });
 
+  const category = raw.category || raw.tournament || raw.sport || '';
+  const tournament = raw.tournament || raw.league?.name || '';
+
   return {
     _id: raw.id || raw._id || `${server}_${Math.random()}`,
     _server: server,
@@ -150,6 +182,8 @@ function normalizeMatch(raw, server) {
     home,
     away,
     competition,
+    category,
+    tournament,
     time,
     sources,
     raw
@@ -167,6 +201,8 @@ function mergeMatches(falconList, kobraList) {
       home: fm.home,
       away: fm.away,
       competition: fm.competition,
+      category: fm.category,
+      tournament: fm.tournament,
       time: fm.time,
       sources: [...fm.sources]
     });
@@ -188,6 +224,8 @@ function mergeMatches(falconList, kobraList) {
         home: km.home,
         away: km.away,
         competition: km.competition,
+        category: km.category,
+        tournament: km.tournament,
         time: km.time,
         sources: km.sources.map((src, i) => ({ ...src, label: `K-${i + 1}${src.quality ? ' ' + src.quality : ''}` }))
       });

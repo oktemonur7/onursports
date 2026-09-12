@@ -66,7 +66,25 @@ const UI = (() => {
     if (target) {
       target.classList.add('match-card--focused');
       target.focus({ preventScroll: true });
-      target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+      const container = $('match-grid-wrap');
+      if (container) {
+        const targetRect = target.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const safeMargin = 24;
+
+        if (targetRect.top < containerRect.top + safeMargin) {
+          container.scrollBy({
+            top: targetRect.top - containerRect.top - safeMargin,
+            behavior: 'smooth'
+          });
+        } else if (targetRect.bottom > containerRect.bottom - safeMargin) {
+          container.scrollBy({
+            top: targetRect.bottom - containerRect.bottom + safeMargin,
+            behavior: 'smooth'
+          });
+        }
+      }
     }
   }
 

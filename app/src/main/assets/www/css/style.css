@@ -80,7 +80,9 @@ html, body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 12px var(--safe) 48px;
+  padding: 16px var(--safe) 60px;
+  scroll-padding-top: 20px;
+  scroll-padding-bottom: 50px;
   scrollbar-width: none;
 }
 #match-grid-wrap::-webkit-scrollbar { display: none; }
@@ -89,7 +91,7 @@ html, body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
-  padding-bottom: 20px;
+  padding-bottom: 30px;
 }
 
 /* ── Match Card ─────────────────────────────── */
