@@ -51,13 +51,16 @@ function isExcludedMatch(match) {
 // ─── Canlı Maç Kontrolü ──────────────────────────────────────────────────
 
 function isLiveMatch(raw) {
-  // Farklı API'lerde farklı alan adları olabilir
-  if (raw.status === 'live' || raw.status === 'in_progress' || raw.status === 'inprogress') return true;
-  if (raw.live === true || raw.is_live === true || raw.isLive === true) return true;
-  if (raw.live === 1 || raw.is_live === 1) return true;
-  if (raw.state === 'live' || raw.state === 'playing') return true;
-  // type=live ile çekildiği için kaynak yoksa bile canlı sayıyoruz
-  return true; // API zaten live filtreli döndürüyor
+  // Status alanı varsa kontrol et
+  const status = (raw.status || raw.state || '').toLowerCase();
+  if (status) {
+    return ['live', 'in_progress', 'inprogress', 'playing', 'active', '1', 'ongoing'].includes(status);
+  }
+  // live/is_live boolean alanı varsa kontrol et
+  if (raw.live !== undefined) return raw.live === true || raw.live === 1 || raw.live === '1';
+  if (raw.is_live !== undefined) return raw.is_live === true || raw.is_live === 1;
+  // Hiçbir status alanı yoksa dahil et (API eksik veri döndürüyor olabilir)
+  return true;
 }
 
 // ─── Takım Adı Normalizasyonu ─────────────────────────────────────────────
@@ -95,8 +98,8 @@ function parseTeamsFromTitle(title) {
 // ─── Tek Sunucu Fetch ─────────────────────────────────────────────────────
 
 async function fetchServer(server) {
-  // type=live → sadece canlı maçlar
-  const url = `${API_BASE}?server=${server}&type=live`;
+  // type=both → tümünü çek, canlı filtresi client tarafında yapılacak
+  const url = `${API_BASE}?server=${server}&type=both`;
   try {
     const res = await fetch(url, {
       method: 'GET',
@@ -183,8 +186,12 @@ async function fetchAllMatches() {
 
   console.log(`[API] Falcon: ${falconRaw.length} | Kobra: ${kobraRaw.length}`);
 
-  const falconList = falconRaw.map(m => normalizeMatch(m, 'falcon'));
-  const kobraList  = kobraRaw.map(m => normalizeMatch(m, 'kobra'));
+  const falconLive = falconRaw.filter(m => isLiveMatch(m));
+  const kobraLive  = kobraRaw.filter(m => isLiveMatch(m));
+  console.log(`[API] Canlı: Falcon ${falconLive.length} | Kobra ${kobraLive.length}`);
+
+  const falconList = falconLive.map(m => normalizeMatch(m, 'falcon'));
+  const kobraList  = kobraLive.map(m => normalizeMatch(m, 'kobra'));
 
   let result = mergeMatches(falconList, kobraList);
 
