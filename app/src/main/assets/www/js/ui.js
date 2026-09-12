@@ -1,21 +1,22 @@
 /**
- * ui.js — Maç listesi render + D-Pad navigasyon + Popup yönetimi
- * v2: header kaldırıldı, kompakt kartlar, d-pad düzeltildi, null bug fix
+ * ui.js v3
+ * - 3 sütun grid
+ * - Kartlarda kaynak bilgisi yok
+ * - Topbar keypress bildirimi
  */
 
 const UI = (() => {
-  // ─── State ───────────────────────────────────────────────────────────────
   let matches = [];
   let activeCardIndex = 0;
   let popupOpen = false;
   let popupSourceIndex = 0;
   let popupMatch = null;
   let refreshTimer = null;
-  const COLS = 2; // grid sütun sayısı
+  const COLS = 3;
 
   const $ = id => document.getElementById(id);
 
-  // ─── Render: Maç Listesi ──────────────────────────────────────────────
+  // ─── Render ──────────────────────────────────────────────────────────
 
   function renderMatchList(matchList) {
     matches = matchList;
@@ -35,23 +36,15 @@ const UI = (() => {
       card.tabIndex = 0;
       card.setAttribute('role', 'button');
 
-      const falconCount = match.sources.filter(s => s.server === 'falcon').length;
-      const kobraCount  = match.sources.filter(s => s.server === 'kobra').length;
-      const badges = [
-        falconCount > 0 ? `<span class="badge badge--falcon">F×${falconCount}</span>` : '',
-        kobraCount  > 0 ? `<span class="badge badge--kobra">K×${kobraCount}</span>`  : '',
-      ].join('');
-
-      const title = match.home && match.away
-        ? `${escHtml(match.home)} <span class="vs">vs</span> ${escHtml(match.away)}`
-        : escHtml(match.title || '');
+      const homeText = escHtml(match.home || match.title || '');
+      const awayText = escHtml(match.away || '');
 
       card.innerHTML = `
-        <div class="card-title">${title}</div>
-        <div class="card-meta">
-          <div class="card-badges">${badges}</div>
-          ${match.time ? `<span class="card-time">${escHtml(match.time)}</span>` : ''}
+        <div class="card-title">
+          ${homeText}
+          ${awayText ? `<span class="vs">vs</span>${awayText}` : ''}
         </div>
+        ${match.time ? `<div class="card-time">${escHtml(match.time)}</div>` : ''}
       `;
 
       card.addEventListener('click', () => openPopup(idx));
@@ -68,7 +61,6 @@ const UI = (() => {
     if (idx < 0) idx = 0;
     if (idx >= cards.length) idx = cards.length - 1;
     activeCardIndex = idx;
-
     cards.forEach(c => c.classList.remove('match-card--focused'));
     const target = cards[idx];
     if (target) {
@@ -78,44 +70,36 @@ const UI = (() => {
     }
   }
 
-  // ─── Popup: Kaynak Seçimi ─────────────────────────────────────────────
+  // ─── Popup ────────────────────────────────────────────────────────────
 
   function openPopup(matchIdx) {
     popupMatch = matches[matchIdx];
     if (!popupMatch || popupMatch.sources.length === 0) return;
-
     popupOpen = true;
     popupSourceIndex = 0;
-
-    const overlay = $('source-popup-overlay');
 
     const title = popupMatch.home && popupMatch.away
       ? `${popupMatch.home} vs ${popupMatch.away}`
       : popupMatch.title || '';
 
     $('popup-match-title').textContent = title;
-    $('popup-match-info').textContent =
-      [popupMatch.competition, popupMatch.time].filter(Boolean).join('  •  ');
+    $('popup-match-info').textContent = [popupMatch.competition, popupMatch.time].filter(Boolean).join('  •  ');
 
     const sourceList = $('popup-source-list');
     sourceList.innerHTML = '';
-
     popupMatch.sources.forEach((src, i) => {
       const btn = document.createElement('button');
       btn.className = `source-btn source-btn--${src.server}`;
       btn.dataset.idx = i;
       btn.tabIndex = 0;
-
       btn.innerHTML = `
         <span class="source-label">${escHtml(src.label)}</span>
         ${src.quality ? `<span class="source-quality source-quality--${src.quality.toLowerCase()}">${src.quality}</span>` : ''}
       `;
-
-      // Click kaldırıldı - sadece keydown ile yönetiliyor (double-fire engeli)
       sourceList.appendChild(btn);
     });
 
-    overlay.classList.add('popup-overlay--visible');
+    $('source-popup-overlay').classList.add('popup-overlay--visible');
     setTimeout(() => focusSourceBtn(0), 80);
   }
 
@@ -123,7 +107,6 @@ const UI = (() => {
     if (!popupOpen) return;
     popupOpen = false;
     popupMatch = null;
-
     $('source-popup-overlay').classList.remove('popup-overlay--visible');
     setTimeout(() => focusCard(activeCardIndex), 100);
   }
@@ -134,7 +117,6 @@ const UI = (() => {
     if (idx < 0) idx = btns.length - 1;
     if (idx >= btns.length) idx = 0;
     popupSourceIndex = idx;
-
     btns.forEach(b => b.classList.remove('source-btn--focused'));
     btns[idx]?.classList.add('source-btn--focused');
     btns[idx]?.focus({ preventScroll: true });
@@ -142,50 +124,41 @@ const UI = (() => {
 
   function playSource(sourceIdx) {
     if (!popupMatch) return;
-
-    // BUG FIX: closePopup() popupMatch'i null yapıyor.
-    // Bu yüzden önce local değişkenlere kopyala.
+    // CRITICAL: ref'leri closePopup()'dan ÖNCE kaydet
     const matchTitle = popupMatch.home && popupMatch.away
       ? `${popupMatch.home} vs ${popupMatch.away}`
       : popupMatch.title || '';
     const src = popupMatch.sources[sourceIdx];
-
     if (!src || !src.url) return;
 
     closePopup();
-
     setTimeout(() => {
-      Player.open(matchTitle, src, () => {
-        focusCard(activeCardIndex);
-      });
+      Player.open(matchTitle, src, () => { focusCard(activeCardIndex); });
     }, 150);
   }
 
-  // ─── D-Pad Key Handler ────────────────────────────────────────────────
+  // ─── D-Pad ───────────────────────────────────────────────────────────
 
-  let keyLocked = false; // Çift tetiklenmeyi önle
+  let keyLocked = false;
 
   function handleKeyDown(e) {
-    if (keyLocked) { e.preventDefault(); return; }
     const key = e.key || e.keyCode;
 
-    // Player açıksa sadece BACK dinle
     if (Player.isOpen()) {
-      if (isBackKey(key)) { e.preventDefault(); Player.close(); }
+      if (isBackKey(key)) { e.preventDefault(); Player.close(); return; }
+      // Herhangi bir tuşta topbar'ı göster
+      Player.onKeyDuringPlayback();
       return;
     }
 
-    // Popup açıksa
+    if (keyLocked) { e.preventDefault(); return; }
+
     if (popupOpen) {
       switch (key) {
-        case 'ArrowUp':    case 38:
-          e.preventDefault(); focusSourceBtn(popupSourceIndex - 1); break;
-        case 'ArrowDown':  case 40:
-          e.preventDefault(); focusSourceBtn(popupSourceIndex + 1); break;
-        case 'ArrowLeft':  case 37:
-          e.preventDefault(); focusSourceBtn(popupSourceIndex - 1); break;
-        case 'ArrowRight': case 39:
-          e.preventDefault(); focusSourceBtn(popupSourceIndex + 1); break;
+        case 'ArrowUp':    case 38: e.preventDefault(); focusSourceBtn(popupSourceIndex - 1); break;
+        case 'ArrowDown':  case 40: e.preventDefault(); focusSourceBtn(popupSourceIndex + 1); break;
+        case 'ArrowLeft':  case 37: e.preventDefault(); focusSourceBtn(popupSourceIndex - 1); break;
+        case 'ArrowRight': case 39: e.preventDefault(); focusSourceBtn(popupSourceIndex + 1); break;
         case 'Enter':
           e.preventDefault();
           keyLocked = true;
@@ -198,16 +171,12 @@ const UI = (() => {
       return;
     }
 
-    // Maç listesi — DÜZELTİLMİŞ YÖNLER
+    // Ana liste — 3 sütun grid
     switch (key) {
-      case 'ArrowUp':    case 38:
-        e.preventDefault(); focusCard(activeCardIndex - COLS); break;  // bir satır yukarı
-      case 'ArrowDown':  case 40:
-        e.preventDefault(); focusCard(activeCardIndex + COLS); break;  // bir satır aşağı
-      case 'ArrowLeft':  case 37:
-        e.preventDefault(); focusCard(activeCardIndex - 1); break;     // bir önceki kart
-      case 'ArrowRight': case 39:
-        e.preventDefault(); focusCard(activeCardIndex + 1); break;     // bir sonraki kart
+      case 'ArrowUp':    case 38: e.preventDefault(); focusCard(activeCardIndex - COLS); break;
+      case 'ArrowDown':  case 40: e.preventDefault(); focusCard(activeCardIndex + COLS); break;
+      case 'ArrowLeft':  case 37: e.preventDefault(); focusCard(activeCardIndex - 1); break;
+      case 'ArrowRight': case 39: e.preventDefault(); focusCard(activeCardIndex + 1); break;
       case 'Enter':
         e.preventDefault();
         keyLocked = true;
@@ -218,12 +187,11 @@ const UI = (() => {
   }
 
   function isBackKey(key) {
-    return key === 'Escape' || key === 'Backspace'
-      || key === 8 || key === 27
+    return key === 'Escape' || key === 'Backspace' || key === 8 || key === 27
       || key === 'GoBack' || key === 'BrowserBack';
   }
 
-  // ─── Loading & Error UI ──────────────────────────────────────────────
+  // ─── Loading / Error ─────────────────────────────────────────────────
 
   function showLoading() {
     $('loading-screen').style.display = 'flex';
@@ -243,37 +211,25 @@ const UI = (() => {
     $('error-msg').textContent = msg || 'Bağlantı hatası';
   }
 
-  // ─── Otomatik Yenileme ────────────────────────────────────────────────
-
   function scheduleRefresh(loadFn, intervalMs = 5 * 60 * 1000) {
     if (refreshTimer) clearInterval(refreshTimer);
     refreshTimer = setInterval(() => loadFn(), intervalMs);
   }
 
-  // ─── Init ─────────────────────────────────────────────────────────────
-
   function init() {
     document.addEventListener('keydown', handleKeyDown);
-
-    // Popup overlay dışına tıklama ile kapat
     $('source-popup-overlay')?.addEventListener('click', e => {
       if (e.target === $('source-popup-overlay')) closePopup();
     });
-
     $('error-retry-btn')?.addEventListener('click', () => {
       if (window.AppMain?.load) window.AppMain.load();
     });
   }
 
-  // ─── Global Back Handler (MainActivity.kt'dan çağrılır) ──────────────
-
   window.handleBackPress = () => {
     if (Player.isOpen()) { Player.close(); return; }
     if (popupOpen) { closePopup(); return; }
-    // Ana ekranda geri → uygulamayı tamamen kapat
-    if (typeof TvBridge !== 'undefined') {
-      TvBridge.exitApp();
-    }
+    if (typeof TvBridge !== 'undefined') TvBridge.exitApp();
   };
 
   return { init, renderMatchList, showLoading, hideLoading, showError, scheduleRefresh };

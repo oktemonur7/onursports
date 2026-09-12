@@ -1,20 +1,23 @@
 /**
- * player.js — Video / iframe oynatıcı yönetimi
+ * player.js v2
+ * - Close butonu yok
+ * - Topbar 3 sn sonra otomatik gizlenir, herhangi tuşa basınca tekrar gösterir
+ * - Geri tuşu ile kapatılır
  */
 
 const Player = (() => {
   let playerOverlay = null;
   let onCloseCallback = null;
+  let topbarTimer = null;
 
   function _createOverlay() {
     const overlay = document.createElement('div');
     overlay.id = 'player-overlay';
     overlay.className = 'player-overlay';
     overlay.innerHTML = `
-      <div class="player-topbar">
+      <div class="player-topbar" id="player-topbar">
         <span class="player-match-title" id="player-match-title"></span>
         <span class="player-source-label" id="player-source-label"></span>
-        <button class="player-close-btn" id="player-close-btn" tabindex="0" aria-label="Kapat">✕ KAPAT</button>
       </div>
       <div class="player-frame-wrap">
         <iframe
@@ -35,51 +38,43 @@ const Player = (() => {
     return overlay;
   }
 
-  function open(matchTitle, source, onClose) {
-    close(); // varsa önceki overlay'i temizle
+  function _showTopbar() {
+    const topbar = document.getElementById('player-topbar');
+    if (!topbar) return;
+    topbar.classList.remove('player-topbar--hidden');
+    clearTimeout(topbarTimer);
+    topbarTimer = setTimeout(() => {
+      topbar.classList.add('player-topbar--hidden');
+    }, 3000);
+  }
 
+  function open(matchTitle, source, onClose) {
+    close();
     onCloseCallback = onClose;
 
     playerOverlay = _createOverlay();
     document.body.appendChild(playerOverlay);
 
-    // Başlık & etiket güncelle
     document.getElementById('player-match-title').textContent = matchTitle;
     document.getElementById('player-source-label').textContent = source.label;
 
-    // Kapat butonu
-    const closeBtn = document.getElementById('player-close-btn');
-    closeBtn.addEventListener('click', close);
-    closeBtn.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); close(); }
-    });
-
-    // İframe yükle
     const iframe = document.getElementById('player-iframe');
     const loading = document.getElementById('player-loading');
 
-    iframe.addEventListener('load', () => {
-      loading.style.display = 'none';
-    }, { once: true });
+    iframe.addEventListener('load', () => { loading.style.display = 'none'; }, { once: true });
 
-    // Kısa gecikme sonra src ata (loading göster)
-    setTimeout(() => {
-      iframe.src = source.url;
-    }, 100);
+    setTimeout(() => { iframe.src = source.url; }, 100);
 
-    // Focus kapat butonuna
-    setTimeout(() => closeBtn.focus(), 200);
-
-    // Overlay animasyonu
+    // Topbar 3 sn sonra gizle
     requestAnimationFrame(() => playerOverlay.classList.add('player-overlay--visible'));
+    _showTopbar();
   }
 
   function close() {
     if (!playerOverlay) return;
-
+    clearTimeout(topbarTimer);
     playerOverlay.classList.remove('player-overlay--visible');
 
-    // İframe'i boşalt (yayını durdur)
     const iframe = document.getElementById('player-iframe');
     if (iframe) iframe.src = 'about:blank';
 
@@ -91,11 +86,12 @@ const Player = (() => {
     }, 250);
   }
 
-  function isOpen() {
-    return playerOverlay !== null;
-  }
+  function isOpen() { return playerOverlay !== null; }
 
-  return { open, close, isOpen };
+  // Herhangi bir tuşa basınca topbar'ı göster
+  function onKeyDuringPlayback() { _showTopbar(); }
+
+  return { open, close, isOpen, onKeyDuringPlayback };
 })();
 
 window.Player = Player;
