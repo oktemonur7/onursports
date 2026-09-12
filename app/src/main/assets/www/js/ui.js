@@ -101,7 +101,8 @@ const UI = (() => {
       : popupMatch.title || '';
 
     $('popup-match-title').textContent = title;
-    $('popup-match-info').textContent = [popupMatch.competition, popupMatch.time].filter(Boolean).join('  •  ');
+    $('popup-match-info').textContent = '';
+
 
     const sourceList = $('popup-source-list');
     sourceList.innerHTML = '';

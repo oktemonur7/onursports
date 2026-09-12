@@ -1,24 +1,10 @@
 /**
- * api.js v5
- * - Falcon ve Kobra live/all dizilerini eksiksiz okur.
- * - Kadın (W) ve U23/altyapı maçlarını eksiksiz filtreler.
- * - Gelişmiş takım adı eşleştirmesi ile Falcon + Kobra kaynaklarını tek maç altında birleştirir.
+ * api.js v6
+ * - Sadece Falcon — Kobra kaldırıldı.
+ * - Kadın (W), altyapı ve istenmeyen spor filtresi.
  */
 
 const API_BASE = 'https://ntv.cx/api/get-matches';
-const KOBRA_PLAYER_BASE = 'https://hesgoal.team/ntvplayer.html?id=';
-const EMBED_BASE = 'https://embed.st/embed/';
-
-function resolveKobraSourceUrl(srcObj) {
-  const srcType = (srcObj.source || '').toLowerCase().trim();
-  const sid = (srcObj.id || '').toString().trim();
-  if (!sid) return null;
-  if (srcType) {
-    // Direkt embed.st — hesgoal.team aracısını atlıyoruz
-    return `${EMBED_BASE}${srcType}/${sid}/1`;
-  }
-  return null;
-}
 
 function resolveQualityLabel(srcObj) {
   const h = [srcObj.url, srcObj.name, srcObj.label, srcObj.quality, srcObj.title, srcObj.channelName]
@@ -28,7 +14,7 @@ function resolveQualityLabel(srcObj) {
   return '';
 }
 
-// Kadın, (W), (w), U23, U21, U19, U17 vb. filtre regex'leri
+// Kadın, (W), U23/altyapı ve istenmeyen spor türleri
 const EXCLUDE_PATTERNS = [
   /\(\s*w\s*\)/i,
   /\[\s*w\s*\]/i,
@@ -93,30 +79,6 @@ function isExcludedMatch(match) {
   return EXCLUDE_PATTERNS.some(p => p.test(text));
 }
 
-function normalizeTeamName(name) {
-  if (!name) return '';
-  return name.toLowerCase()
-    .replace(/[^\w\sğüşıöçĞÜŞİÖÇ]/g, ' ')
-    .replace(/\bfc\b|\bsc\b|\bac\b|\bfk\b|\bsk\b|\btown\b|\bcity\b|\bunited\b|\bv\b/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function teamsMatch(a1, a2, b1, b2) {
-  const na1 = normalizeTeamName(a1), na2 = normalizeTeamName(a2);
-  const nb1 = normalizeTeamName(b1), nb2 = normalizeTeamName(b2);
-  if (!na1 || !na2 || !nb1 || !nb2) return false;
-  if (na1 === nb1 && na2 === nb2) return true;
-
-  const minLen = 3;
-  if (na1.length >= minLen && na2.length >= minLen) {
-    const homeMatch = nb1.includes(na1) || na1.includes(nb1);
-    const awayMatch = nb2.includes(na2) || na2.includes(nb2);
-    if (homeMatch && awayMatch) return true;
-  }
-  return false;
-}
-
 function parseTeamsFromTitle(title) {
   if (!title) return null;
   const parts = title.split(/\s+(?:vs\.?|v\.?|–|-)\s+/i);
@@ -136,7 +98,6 @@ async function fetchServer(server) {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    // Önce doğrudan live listesi varsa onu, yoksa all listesini al
     const rawList = (data.live && data.live.length > 0)
       ? data.live
       : (data.all || data.matches || data.data || []);
@@ -147,7 +108,7 @@ async function fetchServer(server) {
   }
 }
 
-function normalizeMatch(raw, server) {
+function normalizeMatch(raw) {
   const homeRaw = raw.teams?.home?.name || raw.home || raw.home_name || '';
   const awayRaw = raw.teams?.away?.name || raw.away || raw.away_name || '';
   const title = raw.title || raw.name || raw.match_title || `${homeRaw} vs ${awayRaw}`;
@@ -163,89 +124,29 @@ function normalizeMatch(raw, server) {
 
   rawSources.forEach((src, idx) => {
     const quality = resolveQualityLabel(src);
-    if (server === 'falcon') {
-      const url = src.url || src.link || src.stream || null;
-      if (url) sources.push({ label: `F-${idx + 1}${quality ? ' ' + quality : ''}`, url, server: 'falcon', quality });
-    } else if (server === 'kobra') {
-      let url = src.url || src.link || null;
-      if (!url) url = resolveKobraSourceUrl(src);
-      if (url) sources.push({ label: `K-${idx + 1}${quality ? ' ' + quality : ''}`, url, server: 'kobra', quality });
-    }
+    const url = src.url || src.link || src.stream || null;
+    if (url) sources.push({ label: `F-${idx + 1}${quality ? ' ' + quality : ''}`, url, server: 'falcon', quality });
   });
 
-  const category = raw.category || raw.tournament || raw.sport || '';
-  const tournament = raw.tournament || raw.league?.name || '';
-
   return {
-    _id: raw.id || raw._id || `${server}_${Math.random()}`,
-    _server: server,
+    _id: raw.id || raw._id || `falcon_${Math.random()}`,
     title,
     home,
     away,
     competition,
-    category,
-    tournament,
+    category: raw.category || raw.tournament || raw.sport || '',
+    tournament: raw.tournament || raw.league?.name || '',
     time,
     sources,
-    raw
   };
 }
 
-function mergeMatches(falconList, kobraList) {
-  const merged = [];
-
-  // 1. Falcon maçlarını ekle
-  falconList.forEach(fm => {
-    merged.push({
-      id: fm._id,
-      title: fm.title,
-      home: fm.home,
-      away: fm.away,
-      competition: fm.competition,
-      category: fm.category,
-      tournament: fm.tournament,
-      time: fm.time,
-      sources: [...fm.sources]
-    });
-  });
-
-  // 2. Kobra maçlarını eşleştir veya yeni olarak ekle
-  kobraList.forEach(km => {
-    const existing = merged.find(m => teamsMatch(m.home, m.away, km.home, km.away));
-    if (existing) {
-      let ki = 1;
-      km.sources.forEach(src => {
-        existing.sources.push({ ...src, label: `K-${ki}${src.quality ? ' ' + src.quality : ''}` });
-        ki++;
-      });
-    } else {
-      merged.push({
-        id: km._id,
-        title: km.title,
-        home: km.home,
-        away: km.away,
-        competition: km.competition,
-        category: km.category,
-        tournament: km.tournament,
-        time: km.time,
-        sources: km.sources.map((src, i) => ({ ...src, label: `K-${i + 1}${src.quality ? ' ' + src.quality : ''}` }))
-      });
-    }
-  });
-
-  return merged.filter(m => m.sources.length > 0);
-}
-
 async function fetchAllMatches() {
-  console.log('[API] Canlı maçlar çekiliyor…');
-  const [falconRaw, kobraRaw] = await Promise.all([fetchServer('falcon'), fetchServer('kobra')]);
-
-  const falconList = falconRaw.map(m => normalizeMatch(m, 'falcon'));
-  const kobraList  = kobraRaw.map(m => normalizeMatch(m, 'kobra'));
-
-  let result = mergeMatches(falconList, kobraList);
+  console.log('[API] Falcon maçları çekiliyor…');
+  const falconRaw = await fetchServer('falcon');
+  let result = falconRaw.map(m => normalizeMatch(m)).filter(m => m.sources.length > 0);
   result = result.filter(m => !isExcludedMatch(m));
-  console.log(`[API] Filtrelenmiş birleşik maç sayısı: ${result.length}`);
+  console.log(`[API] Filtrelenmiş maç sayısı: ${result.length}`);
   return result;
 }
 
