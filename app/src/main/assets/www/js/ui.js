@@ -38,15 +38,15 @@ const UI = (() => {
 
       const homeText = escHtml(match.home || match.title || '');
       const awayText = escHtml(match.away || '');
+      // Boşluk bırakmadan title oluştur (template literal whitespace önlemi)
+      const titleHtml = awayText
+        ? `${homeText}<span class="vs">vs</span>${awayText}`
+        : homeText;
+      const timeHtml = match.time
+        ? `<div class="card-time">${escHtml(match.time)}</div>`
+        : '';
 
-      card.innerHTML = `
-        <div class="card-title">
-          ${homeText}
-          ${awayText ? `<span class="vs">vs</span>${awayText}` : ''}
-        </div>
-        ${match.time ? `<div class="card-time">${escHtml(match.time)}</div>` : ''}
-      `;
-
+      card.innerHTML = `<div class="card-title">${titleHtml}</div>${timeHtml}`;
       card.addEventListener('click', () => openPopup(idx));
       card.addEventListener('focus', () => { activeCardIndex = idx; });
       grid.appendChild(card);

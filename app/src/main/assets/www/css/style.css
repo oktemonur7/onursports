@@ -45,14 +45,31 @@ html, body {
   overflow: hidden;
 }
 
+/* ── App Header (Logo + Ticker) ─────────────── */
+.app-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px var(--safe) 0;
+}
+
+.app-logo {
+  height: 42px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+
 /* ── Ticker ─────────────────────────────────── */
 .ticker-wrap {
-  flex-shrink: 0;
+  flex: 1;
   overflow: hidden;
   background: linear-gradient(90deg, rgba(79,142,247,0.15), rgba(79,142,247,0.08));
-  border-bottom: 1px solid rgba(79,142,247,0.2);
-  padding: 7px 0;
-  margin-top: 10px;
+  border: 1px solid rgba(79,142,247,0.2);
+  border-radius: 6px;
+  padding: 6px 12px;
   white-space: nowrap;
 }
 
@@ -62,7 +79,7 @@ html, body {
 }
 
 .ticker-text {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--accent);
   letter-spacing: 0.3px;
@@ -70,7 +87,7 @@ html, body {
 }
 
 @keyframes ticker-scroll {
-  0%   { transform: translateX(100vw); }
+  0%   { transform: translateX(60vw); }
   100% { transform: translateX(-100%); }
 }
 
@@ -79,7 +96,7 @@ html, body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px var(--safe) var(--safe);
+  padding: 14px var(--safe) var(--safe);
   scrollbar-width: none;
 }
 #match-grid-wrap::-webkit-scrollbar { display: none; }
@@ -90,14 +107,16 @@ html, body {
   gap: 10px;
 }
 
-/* ── Match Card — kompakt ───────────────────── */
+/* ── Match Card ─────────────────────────────── */
 .match-card {
+  min-width: 0; /* CRITICAL: grid'de nowrap taşmasını önler */
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 14px 16px;
   cursor: pointer;
   outline: none;
+  overflow: hidden;
   transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
   display: flex;
   flex-direction: column;
@@ -118,11 +137,11 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.35;
+  min-width: 0;
 }
 
 .card-title .vs {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   color: var(--text-3);
   margin: 0 5px;
