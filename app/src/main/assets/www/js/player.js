@@ -27,7 +27,6 @@ const Player = (() => {
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
           frameborder="0"
           scrolling="no"
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-presentation"
         ></iframe>
         <div class="player-loading" id="player-loading">
           <div class="spinner"></div>
