@@ -1,5 +1,6 @@
 /**
  * ui.js — Maç listesi render + D-Pad navigasyon + Popup yönetimi
+ * v2: header kaldırıldı, kompakt kartlar, d-pad düzeltildi, null bug fix
  */
 
 const UI = (() => {
@@ -10,26 +11,20 @@ const UI = (() => {
   let popupSourceIndex = 0;
   let popupMatch = null;
   let refreshTimer = null;
+  const COLS = 2; // grid sütun sayısı
 
-  // ─── DOM referansları ──────────────────────────────────────────────────
   const $ = id => document.getElementById(id);
 
-  // ─── Render: Maç Listesi ───────────────────────────────────────────────
+  // ─── Render: Maç Listesi ──────────────────────────────────────────────
 
   function renderMatchList(matchList) {
     matches = matchList;
     const grid = $('match-grid');
     if (!grid) return;
-
     grid.innerHTML = '';
 
     if (matches.length === 0) {
-      grid.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📺</div>
-          <div class="empty-text">Şu an canlı maç yok</div>
-          <div class="empty-sub">Birazdan tekrar deneyin</div>
-        </div>`;
+      grid.innerHTML = `<div class="empty-state"><div class="empty-icon">📺</div><div class="empty-text">Şu an canlı maç yok</div></div>`;
       return;
     }
 
@@ -39,30 +34,23 @@ const UI = (() => {
       card.dataset.idx = idx;
       card.tabIndex = 0;
       card.setAttribute('role', 'button');
-      card.setAttribute('aria-label', `${match.title}, ${match.sources.length} kaynak`);
 
-      // Falcon / Kobra kaynak rozetleri
       const falconCount = match.sources.filter(s => s.server === 'falcon').length;
       const kobraCount  = match.sources.filter(s => s.server === 'kobra').length;
-
       const badges = [
         falconCount > 0 ? `<span class="badge badge--falcon">F×${falconCount}</span>` : '',
         kobraCount  > 0 ? `<span class="badge badge--kobra">K×${kobraCount}</span>`  : '',
       ].join('');
 
+      const title = match.home && match.away
+        ? `${escHtml(match.home)} <span class="vs">vs</span> ${escHtml(match.away)}`
+        : escHtml(match.title || '');
+
       card.innerHTML = `
-        <div class="card-header">
-          <span class="card-competition">${escHtml(match.competition || 'Canlı')}</span>
-          <span class="card-time">${escHtml(match.time || '')}</span>
-        </div>
-        <div class="card-teams">
-          <span class="card-team card-home">${escHtml(match.home || match.title)}</span>
-          <span class="card-vs">vs</span>
-          <span class="card-team card-away">${escHtml(match.away || '')}</span>
-        </div>
-        <div class="card-footer">
+        <div class="card-title">${title}</div>
+        <div class="card-meta">
           <div class="card-badges">${badges}</div>
-          <span class="card-source-count">${match.sources.length} kaynak</span>
+          ${match.time ? `<span class="card-time">${escHtml(match.time)}</span>` : ''}
         </div>
       `;
 
@@ -71,18 +59,17 @@ const UI = (() => {
       grid.appendChild(card);
     });
 
-    // İlk kartı focus'la
     focusCard(activeCardIndex);
   }
 
   function focusCard(idx) {
+    const cards = document.querySelectorAll('.match-card');
+    if (!cards.length) return;
     if (idx < 0) idx = 0;
-    if (idx >= matches.length) idx = matches.length - 1;
+    if (idx >= cards.length) idx = cards.length - 1;
     activeCardIndex = idx;
 
-    const cards = document.querySelectorAll('.match-card');
     cards.forEach(c => c.classList.remove('match-card--focused'));
-
     const target = cards[idx];
     if (target) {
       target.classList.add('match-card--focused');
@@ -91,7 +78,7 @@ const UI = (() => {
     }
   }
 
-  // ─── Popup: Kaynak Seçimi ──────────────────────────────────────────────
+  // ─── Popup: Kaynak Seçimi ─────────────────────────────────────────────
 
   function openPopup(matchIdx) {
     popupMatch = matches[matchIdx];
@@ -101,14 +88,15 @@ const UI = (() => {
     popupSourceIndex = 0;
 
     const overlay = $('source-popup-overlay');
-    const popup   = $('source-popup');
 
-    // Maç bilgisini güncelle
-    $('popup-match-title').textContent = popupMatch.title;
-    $('popup-match-info').textContent  =
-      `${popupMatch.competition || ''}${popupMatch.time ? '  •  ' + popupMatch.time : ''}`;
+    const title = popupMatch.home && popupMatch.away
+      ? `${popupMatch.home} vs ${popupMatch.away}`
+      : popupMatch.title || '';
 
-    // Kaynak butonlarını oluştur
+    $('popup-match-title').textContent = title;
+    $('popup-match-info').textContent =
+      [popupMatch.competition, popupMatch.time].filter(Boolean).join('  •  ');
+
     const sourceList = $('popup-source-list');
     sourceList.innerHTML = '';
 
@@ -117,29 +105,18 @@ const UI = (() => {
       btn.className = `source-btn source-btn--${src.server}`;
       btn.dataset.idx = i;
       btn.tabIndex = 0;
-      btn.setAttribute('aria-label', `Kaynak ${src.label}`);
-
-      const serverIcon = src.server === 'falcon' ? '🦅' : '🐍';
 
       btn.innerHTML = `
-        <span class="source-icon">${serverIcon}</span>
         <span class="source-label">${escHtml(src.label)}</span>
-        <span class="source-quality ${src.quality ? 'source-quality--' + src.quality.toLowerCase() : ''}">
-          ${src.quality || ''}
-        </span>
+        ${src.quality ? `<span class="source-quality source-quality--${src.quality.toLowerCase()}">${src.quality}</span>` : ''}
       `;
 
-      btn.addEventListener('click', () => playSource(i));
-      btn.addEventListener('focus', () => { popupSourceIndex = i; });
+      // Click kaldırıldı - sadece keydown ile yönetiliyor (double-fire engeli)
       sourceList.appendChild(btn);
     });
 
-    // Göster
     overlay.classList.add('popup-overlay--visible');
-    popup.classList.add('source-popup--visible');
-
-    // İlk kaynağa focus
-    setTimeout(() => focusSourceBtn(0), 100);
+    setTimeout(() => focusSourceBtn(0), 80);
   }
 
   function closePopup() {
@@ -147,20 +124,13 @@ const UI = (() => {
     popupOpen = false;
     popupMatch = null;
 
-    const overlay = $('source-popup-overlay');
-    const popup   = $('source-popup');
-
-    overlay.classList.remove('popup-overlay--visible');
-    popup.classList.remove('source-popup--visible');
-
-    // Maç listesine geri dön
-    setTimeout(() => focusCard(activeCardIndex), 150);
+    $('source-popup-overlay').classList.remove('popup-overlay--visible');
+    setTimeout(() => focusCard(activeCardIndex), 100);
   }
 
   function focusSourceBtn(idx) {
     const btns = document.querySelectorAll('.source-btn');
     if (!btns.length) return;
-
     if (idx < 0) idx = btns.length - 1;
     if (idx >= btns.length) idx = 0;
     popupSourceIndex = idx;
@@ -172,99 +142,77 @@ const UI = (() => {
 
   function playSource(sourceIdx) {
     if (!popupMatch) return;
+
+    // BUG FIX: closePopup() popupMatch'i null yapıyor.
+    // Bu yüzden önce local değişkenlere kopyala.
+    const matchTitle = popupMatch.home && popupMatch.away
+      ? `${popupMatch.home} vs ${popupMatch.away}`
+      : popupMatch.title || '';
     const src = popupMatch.sources[sourceIdx];
+
     if (!src || !src.url) return;
 
     closePopup();
 
-    // Kısa gecikme sonra player aç
     setTimeout(() => {
-      Player.open(popupMatch.title, src, () => {
-        // Player kapandığında maç listesine dön
+      Player.open(matchTitle, src, () => {
         focusCard(activeCardIndex);
       });
-    }, 200);
+    }, 150);
   }
 
   // ─── D-Pad Key Handler ────────────────────────────────────────────────
 
+  let keyLocked = false; // Çift tetiklenmeyi önle
+
   function handleKeyDown(e) {
+    if (keyLocked) { e.preventDefault(); return; }
     const key = e.key || e.keyCode;
 
-    // Player açıksa sadece ESC/Back dinle
+    // Player açıksa sadece BACK dinle
     if (Player.isOpen()) {
-      if (isBackKey(key)) {
-        e.preventDefault();
-        Player.close();
-      }
+      if (isBackKey(key)) { e.preventDefault(); Player.close(); }
       return;
     }
 
     // Popup açıksa
     if (popupOpen) {
       switch (key) {
-        case 'ArrowLeft':
-        case 37:
-          e.preventDefault();
-          focusSourceBtn(popupSourceIndex - 1);
-          break;
-        case 'ArrowRight':
-        case 39:
-          e.preventDefault();
-          focusSourceBtn(popupSourceIndex + 1);
-          break;
-        case 'ArrowUp':
-        case 38:
-          e.preventDefault();
-          focusSourceBtn(popupSourceIndex - 1);
-          break;
-        case 'ArrowDown':
-        case 40:
-          e.preventDefault();
-          focusSourceBtn(popupSourceIndex + 1);
-          break;
+        case 'ArrowUp':    case 38:
+          e.preventDefault(); focusSourceBtn(popupSourceIndex - 1); break;
+        case 'ArrowDown':  case 40:
+          e.preventDefault(); focusSourceBtn(popupSourceIndex + 1); break;
+        case 'ArrowLeft':  case 37:
+          e.preventDefault(); focusSourceBtn(popupSourceIndex - 1); break;
+        case 'ArrowRight': case 39:
+          e.preventDefault(); focusSourceBtn(popupSourceIndex + 1); break;
         case 'Enter':
-        case ' ':
           e.preventDefault();
+          keyLocked = true;
           playSource(popupSourceIndex);
+          setTimeout(() => { keyLocked = false; }, 500);
           break;
-        case 'Escape':
-        case 'Backspace':
-        case 8:
-        case 27:
-          e.preventDefault();
-          closePopup();
-          break;
+        case 'Escape': case 'Backspace': case 8: case 27:
+          e.preventDefault(); closePopup(); break;
       }
       return;
     }
 
-    // Maç listesinde
+    // Maç listesi — DÜZELTİLMİŞ YÖNLER
     switch (key) {
-      case 'ArrowUp':
-      case 38:
-        e.preventDefault();
-        focusCard(activeCardIndex - 1);
-        break;
-      case 'ArrowDown':
-      case 40:
-        e.preventDefault();
-        focusCard(activeCardIndex + 1);
-        break;
-      case 'ArrowLeft':
-      case 37:
-        e.preventDefault();
-        focusCard(activeCardIndex - 3); // 3 sütunlu grid
-        break;
-      case 'ArrowRight':
-      case 39:
-        e.preventDefault();
-        focusCard(activeCardIndex + 3); // 3 sütunlu grid
-        break;
+      case 'ArrowUp':    case 38:
+        e.preventDefault(); focusCard(activeCardIndex - COLS); break;  // bir satır yukarı
+      case 'ArrowDown':  case 40:
+        e.preventDefault(); focusCard(activeCardIndex + COLS); break;  // bir satır aşağı
+      case 'ArrowLeft':  case 37:
+        e.preventDefault(); focusCard(activeCardIndex - 1); break;     // bir önceki kart
+      case 'ArrowRight': case 39:
+        e.preventDefault(); focusCard(activeCardIndex + 1); break;     // bir sonraki kart
       case 'Enter':
-      case ' ':
         e.preventDefault();
+        keyLocked = true;
         openPopup(activeCardIndex);
+        setTimeout(() => { keyLocked = false; }, 500);
         break;
     }
   }
@@ -275,7 +223,7 @@ const UI = (() => {
       || key === 'GoBack' || key === 'BrowserBack';
   }
 
-  // ─── Loading & Error UI ────────────────────────────────────────────────
+  // ─── Loading & Error UI ──────────────────────────────────────────────
 
   function showLoading() {
     $('loading-screen').style.display = 'flex';
@@ -295,23 +243,11 @@ const UI = (() => {
     $('error-msg').textContent = msg || 'Bağlantı hatası';
   }
 
-  // ─── Zaman Göstergesi ─────────────────────────────────────────────────
-
-  function updateClock() {
-    const el = $('header-clock');
-    if (!el) return;
-    const now = new Date();
-    el.textContent = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  }
-
-  // ─── Otomatik Yenileme ─────────────────────────────────────────────────
+  // ─── Otomatik Yenileme ────────────────────────────────────────────────
 
   function scheduleRefresh(loadFn, intervalMs = 5 * 60 * 1000) {
     if (refreshTimer) clearInterval(refreshTimer);
-    refreshTimer = setInterval(() => {
-      console.log('[UI] Otomatik yenileme…');
-      loadFn();
-    }, intervalMs);
+    refreshTimer = setInterval(() => loadFn(), intervalMs);
   }
 
   // ─── Init ─────────────────────────────────────────────────────────────
@@ -319,46 +255,33 @@ const UI = (() => {
   function init() {
     document.addEventListener('keydown', handleKeyDown);
 
-    // Popup overlay tıklaması ile kapatma
+    // Popup overlay dışına tıklama ile kapat
     $('source-popup-overlay')?.addEventListener('click', e => {
       if (e.target === $('source-popup-overlay')) closePopup();
     });
 
-    // Yenile butonu
     $('error-retry-btn')?.addEventListener('click', () => {
       if (window.AppMain?.load) window.AppMain.load();
     });
-
-    // Saat
-    updateClock();
-    setInterval(updateClock, 30000);
   }
 
-  // Global back handler (MainActivity.kt'dan çağrılır)
+  // ─── Global Back Handler (MainActivity.kt'dan çağrılır) ──────────────
+
   window.handleBackPress = () => {
     if (Player.isOpen()) { Player.close(); return; }
     if (popupOpen) { closePopup(); return; }
+    // Ana ekranda geri → uygulamayı tamamen kapat
+    if (typeof TvBridge !== 'undefined') {
+      TvBridge.exitApp();
+    }
   };
 
-  return {
-    init,
-    renderMatchList,
-    showLoading,
-    hideLoading,
-    showError,
-    scheduleRefresh,
-  };
+  return { init, renderMatchList, showLoading, hideLoading, showError, scheduleRefresh };
 })();
-
-// ─── Yardımcı ──────────────────────────────────────────────────────────────
 
 function escHtml(str) {
   if (!str) return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 window.UI = UI;

@@ -3,109 +3,70 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <meta name="theme-color" content="#0a0a0f" />
-  <title>TV Canlı Maç</title>
+  <title>Canlı Maç</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
 
 <div id="app">
 
-  <!-- ── Header ─────────────────────────────────────────── -->
-  <header id="app-header">
-    <div class="header-logo">
-      <span class="header-logo-icon">📺</span>
-      <span class="header-logo-text">TV <span>Canlı</span> Maç</span>
-    </div>
-    <div class="header-right">
-      <div class="header-live-badge">
-        <span class="live-dot"></span>
-        CANLI
-      </div>
-      <span id="header-clock">--:--</span>
-    </div>
-  </header>
-
-  <!-- ── Loading ────────────────────────────────────────── -->
+  <!-- Loading -->
   <div id="loading-screen">
     <div class="spinner"></div>
     <p>Maçlar yükleniyor…</p>
   </div>
 
-  <!-- ── Error ──────────────────────────────────────────── -->
+  <!-- Error -->
   <div id="error-screen" style="display:none">
     <div class="error-icon">⚠️</div>
     <p id="error-msg">Bağlantı hatası oluştu.</p>
     <button id="error-retry-btn" tabindex="0">Yeniden Dene</button>
   </div>
 
-  <!-- ── Match Grid ─────────────────────────────────────── -->
+  <!-- Match Grid -->
   <div id="match-grid-wrap">
     <div id="match-grid" style="display:none"></div>
   </div>
 
-</div><!-- #app -->
+</div>
 
-<!-- ── Source Popup ──────────────────────────────────────── -->
-<div id="source-popup-overlay" role="dialog" aria-modal="true" aria-label="Kaynak Seç">
+<!-- Source Popup -->
+<div id="source-popup-overlay" role="dialog" aria-modal="true">
   <div id="source-popup">
     <div class="popup-header">
-      <div class="popup-header-top">
-        <span class="popup-live-dot"></span>
-        <span class="popup-tag">Canlı Yayın</span>
-      </div>
       <div id="popup-match-title"></div>
       <div id="popup-match-info"></div>
     </div>
-
     <div class="popup-divider"></div>
-    <div class="popup-source-label">Yayın Kaynağı Seçin</div>
-
+    <div class="popup-source-label">Kaynak Seçin</div>
     <div id="popup-source-list" role="list"></div>
   </div>
 </div>
 
-<!-- ── Scripts ───────────────────────────────────────────── -->
 <script src="js/api.js"></script>
 <script src="js/player.js"></script>
 <script src="js/ui.js"></script>
 <script>
-  /**
-   * AppMain — Uygulama başlatıcı
-   * API → render döngüsü, CORS fallback mantığı
-   */
   window.AppMain = (() => {
-    const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 dakika
-
     async function load() {
       UI.showLoading();
       try {
         const matches = await AppAPI.fetchAllMatches();
         UI.hideLoading();
         UI.renderMatchList(matches);
-
-        if (typeof TvBridge !== 'undefined') {
-          TvBridge.log(`[AppMain] ${matches.length} maç yüklendi.`);
-        }
       } catch (err) {
-        console.error('[AppMain] Yükleme hatası:', err);
-        UI.showError('Maçlar yüklenemedi. İnternet bağlantınızı kontrol edin.');
+        UI.showError('Maçlar yüklenemedi.');
       }
     }
-
     function init() {
       UI.init();
       load();
-      UI.scheduleRefresh(load, REFRESH_INTERVAL);
+      UI.scheduleRefresh(load, 5 * 60 * 1000);
     }
-
     return { init, load };
   })();
 
-  // Sayfa yüklenince başlat
-  document.addEventListener('DOMContentLoaded', () => {
-    AppMain.init();
-  });
+  document.addEventListener('DOMContentLoaded', () => AppMain.init());
 </script>
 
 </body>

@@ -175,6 +175,13 @@ class TvBridge(private val activity: Activity) {
     }
 
     @JavascriptInterface
+    fun exitApp() {
+        android.util.Log.d("TvBridge", "exitApp() çağrıldı — uygulama kapatılıyor")
+        activity.runOnUiThread { activity.finish() }
+        android.os.Process.killProcess(android.os.Process.myPid())
+    }
+
+    @JavascriptInterface
     fun log(message: String) {
         android.util.Log.d("TvApp", message)
     }
