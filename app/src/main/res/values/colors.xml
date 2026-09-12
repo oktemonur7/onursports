@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark">#0A0A0F</color>
+    <color name="card_bg">#15151E</color>
+    <color name="card_focus">#1E1E2E</color>
+    <color name="accent_blue">#4F8EF7</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#8888AA</color>
+    <color name="falcon_color">#4F8EF7</color>
+    <color name="kobra_color">#F7A94F</color>
+</resources>

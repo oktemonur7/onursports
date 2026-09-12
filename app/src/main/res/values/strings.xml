@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TV Canlı Maç</string>
+    <string name="loading">Maçlar yükleniyor…</string>
+    <string name="no_matches">Şu an canlı maç yok</string>
+    <string name="error_network">Bağlantı hatası. Yeniden denenecek…</string>
+</resources>
