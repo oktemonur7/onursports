@@ -45,7 +45,7 @@ const Player = (() => {
     clearTimeout(topbarTimer);
     topbarTimer = setTimeout(() => {
       topbar.classList.add('player-topbar--hidden');
-    }, 3000);
+    }, 10000);
   }
 
   function open(matchTitle, source, onClose) {

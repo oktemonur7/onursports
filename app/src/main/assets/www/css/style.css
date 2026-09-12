@@ -45,31 +45,15 @@ html, body {
   overflow: hidden;
 }
 
-/* ── App Header (Logo + Ticker) ─────────────── */
-.app-header {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 10px var(--safe) 0;
-}
-
-.app-logo {
-  height: 42px;
-  width: auto;
-  object-fit: contain;
-  flex-shrink: 0;
-  border-radius: 4px;
-}
-
 /* ── Ticker ─────────────────────────────────── */
 .ticker-wrap {
-  flex: 1;
+  flex-shrink: 0;
   overflow: hidden;
   background: linear-gradient(90deg, rgba(79,142,247,0.15), rgba(79,142,247,0.08));
   border: 1px solid rgba(79,142,247,0.2);
   border-radius: 6px;
-  padding: 6px 12px;
+  padding: 7px 14px;
+  margin: 10px var(--safe) 8px;
   white-space: nowrap;
 }
 
@@ -96,7 +80,7 @@ html, body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 14px var(--safe) var(--safe);
+  padding: 0 var(--safe) var(--safe);
   scrollbar-width: none;
 }
 #match-grid-wrap::-webkit-scrollbar { display: none; }
@@ -269,9 +253,9 @@ html, body {
 .player-overlay--visible { opacity: 1; }
 
 .player-topbar {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 24px;
-  background: linear-gradient(180deg, rgba(0,0,0,0.88) 0%, transparent 100%);
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 36px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.92) 0%, transparent 100%);
   position: absolute; top: 0; left: 0; right: 0; z-index: 10;
   transition: opacity 0.4s ease;
 }
@@ -279,14 +263,14 @@ html, body {
 .player-topbar--hidden { opacity: 0; pointer-events: none; }
 
 .player-match-title {
-  flex: 1; font-size: 15px; font-weight: 700; color: #fff;
+  flex: 1; font-size: 18px; font-weight: 700; color: #fff;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .player-source-label {
-  font-size: 12px; font-weight: 700; color: var(--accent);
+  font-size: 14px; font-weight: 700; color: var(--accent);
   background: var(--falcon-dim);
-  border: 1px solid rgba(79,142,247,0.22);
-  border-radius: 5px; padding: 3px 9px;
+  border: 1px solid rgba(79,142,247,0.3);
+  border-radius: 6px; padding: 5px 12px;
 }
 
 .player-frame-wrap { flex: 1; position: relative; }

@@ -1,7 +1,8 @@
 /**
- * api.js v4
- * - Kobra: tüm source tipler desteklendi (sadece echo/admin/delta/golf değil)
- * - type=both, live filtre client tarafında
+ * api.js v5
+ * - Falcon ve Kobra live/all dizilerini eksiksiz okur.
+ * - Kadın (W) ve U23/altyapı maçlarını eksiksiz filtreler.
+ * - Gelişmiş takım adı eşleştirmesi ile Falcon + Kobra kaynaklarını tek maç altında birleştirir.
  */
 
 const API_BASE = 'https://ntv.cx/api/get-matches';
@@ -12,7 +13,6 @@ function resolveKobraSourceUrl(srcObj) {
   const srcType = (srcObj.source || '').toLowerCase().trim();
   const sid = (srcObj.id || '').toString().trim();
   if (!sid) return null;
-  // Herhangi bir geçerli source type + id kombinasyonu için URL üret
   if (srcType) {
     return `${KOBRA_PLAYER_BASE}${EMBED_BASE}${srcType}/${sid}/1`;
   }
@@ -20,52 +20,69 @@ function resolveKobraSourceUrl(srcObj) {
 }
 
 function resolveQualityLabel(srcObj) {
-  const h = [srcObj.url, srcObj.name, srcObj.label, srcObj.quality, srcObj.title]
+  const h = [srcObj.url, srcObj.name, srcObj.label, srcObj.quality, srcObj.title, srcObj.channelName]
     .filter(Boolean).join(' ').toUpperCase();
   if (h.includes('FHD') || h.includes('1080')) return 'FHD';
   if (h.includes('DLHD') || h.includes('HD') || h.includes('720')) return 'HD';
   return '';
 }
 
+// Kadın, (W), (w), U23, U21, U19, U17 vb. filtre regex'leri
 const EXCLUDE_PATTERNS = [
-  /\bu\s*23\b/i, /\bu-23\b/i, /\bu21\b/i, /\bu-21\b/i,
-  /\bu20\b/i, /\bu-20\b/i, /\bu19\b/i, /\bu18\b/i,
-  /\bu17\b/i, /\bu16\b/i, /\bu15\b/i,
-  /\bwomen\b/i, /\bwoman\b/i, /\bwomens\b/i,
-  /\bfeminine\b/i, /\bfeminin\b/i, /\bladies\b/i,
-  /\bkadın\b/i, /\bkadin\b/i,
+  /\(\s*w\s*\)/i,
+  /\[\s*w\s*\]/i,
+  /\bwomen\b/i,
+  /\bwomens\b/i,
+  /\bwoman\b/i,
+  /\bfeminine\b/i,
+  /\bfeminin\b/i,
+  /\bladies\b/i,
+  /\blady\b/i,
+  /\bkadın\b/i,
+  /\bkadin\b/i,
+  /\bfem\b/i,
+  /\bu\s*23\b/i, /\bu-23\b/i, /\bu23\b/i,
+  /\bu\s*21\b/i, /\bu-21\b/i, /\bu21\b/i,
+  /\bu\s*20\b/i, /\bu-20\b/i, /\bu20\b/i,
+  /\bu\s*19\b/i, /\bu-19\b/i, /\bu19\b/i,
+  /\bu\s*18\b/i, /\bu-18\b/i, /\bu18\b/i,
+  /\bu\s*17\b/i, /\bu-17\b/i, /\bu17\b/i,
+  /\bu\s*16\b/i, /\bu-16\b/i, /\bu16\b/i,
+  /\bu\s*15\b/i, /\bu-15\b/i, /\bu15\b/i
 ];
 
 function isExcludedMatch(match) {
-  const text = [match.title, match.home, match.away, match.competition].filter(Boolean).join(' ');
+  const text = [
+    match.title,
+    match.home,
+    match.away,
+    match.competition,
+    match.category,
+    match.tournament
+  ].filter(Boolean).join(' ');
   return EXCLUDE_PATTERNS.some(p => p.test(text));
-}
-
-function isLiveMatch(raw) {
-  const status = (raw.status || raw.state || '').toLowerCase();
-  if (status) {
-    return ['live', 'in_progress', 'inprogress', 'playing', 'active', '1', 'ongoing'].includes(status);
-  }
-  if (raw.live !== undefined) return raw.live === true || raw.live === 1 || raw.live === '1';
-  if (raw.is_live !== undefined) return raw.is_live === true || raw.is_live === 1;
-  return true; // status alanı yoksa dahil et
 }
 
 function normalizeTeamName(name) {
   if (!name) return '';
   return name.toLowerCase()
-    .replace(/[^\w\s]/g, '')
-    .replace(/\bfc\b|\bsc\b|\bac\b|\bfk\b|\bsk\b/g, '')
-    .replace(/\s+/g, ' ').trim();
+    .replace(/[^\w\sğüşıöçĞÜŞİÖÇ]/g, ' ')
+    .replace(/\bfc\b|\bsc\b|\bac\b|\bfk\b|\bsk\b|\btown\b|\bcity\b|\bunited\b|\bv\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function teamsMatch(a1, a2, b1, b2) {
   const na1 = normalizeTeamName(a1), na2 = normalizeTeamName(a2);
   const nb1 = normalizeTeamName(b1), nb2 = normalizeTeamName(b2);
+  if (!na1 || !na2 || !nb1 || !nb2) return false;
   if (na1 === nb1 && na2 === nb2) return true;
-  const minLen = 4;
+
+  const minLen = 3;
   if (na1.length >= minLen && na2.length >= minLen) {
-    if ((nb1.includes(na1) || na1.includes(nb1)) && (nb2.includes(na2) || na2.includes(nb2))) return true;
+    const homeMatch = nb1.includes(na1) || na1.includes(nb1);
+    const awayMatch = nb2.includes(na2) || na2.includes(nb2);
+    if (homeMatch && awayMatch) return true;
   }
   return false;
 }
@@ -73,7 +90,9 @@ function teamsMatch(a1, a2, b1, b2) {
 function parseTeamsFromTitle(title) {
   if (!title) return null;
   const parts = title.split(/\s+(?:vs\.?|v\.?|–|-)\s+/i);
-  if (parts.length >= 2) return { home: parts[0].trim(), away: parts.slice(1).join(' vs ').trim() };
+  if (parts.length >= 2) {
+    return { home: parts[0].trim(), away: parts.slice(1).join(' vs ').trim() };
+  }
   return null;
 }
 
@@ -87,7 +106,11 @@ async function fetchServer(server) {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    return data.all || data.matches || data.data || [];
+    // Önce doğrudan live listesi varsa onu, yoksa all listesini al
+    const rawList = (data.live && data.live.length > 0)
+      ? data.live
+      : (data.all || data.matches || data.data || []);
+    return rawList;
   } catch (err) {
     console.warn(`[API] ${server} hatası:`, err.message);
     return [];
@@ -120,14 +143,36 @@ function normalizeMatch(raw, server) {
     }
   });
 
-  return { _id: raw.id || raw._id || `${server}_${Math.random()}`, _server: server, title, home, away, competition, time, sources, raw };
+  return {
+    _id: raw.id || raw._id || `${server}_${Math.random()}`,
+    _server: server,
+    title,
+    home,
+    away,
+    competition,
+    time,
+    sources,
+    raw
+  };
 }
 
 function mergeMatches(falconList, kobraList) {
   const merged = [];
+
+  // 1. Falcon maçlarını ekle
   falconList.forEach(fm => {
-    merged.push({ id: fm._id, title: fm.title, home: fm.home, away: fm.away, competition: fm.competition, time: fm.time, sources: [...fm.sources] });
+    merged.push({
+      id: fm._id,
+      title: fm.title,
+      home: fm.home,
+      away: fm.away,
+      competition: fm.competition,
+      time: fm.time,
+      sources: [...fm.sources]
+    });
   });
+
+  // 2. Kobra maçlarını eşleştir veya yeni olarak ekle
   kobraList.forEach(km => {
     const existing = merged.find(m => teamsMatch(m.home, m.away, km.home, km.away));
     if (existing) {
@@ -137,26 +182,31 @@ function mergeMatches(falconList, kobraList) {
         ki++;
       });
     } else {
-      merged.push({ id: km._id, title: km.title, home: km.home, away: km.away, competition: km.competition, time: km.time, sources: km.sources.map((src, i) => ({ ...src, label: `K-${i + 1}${src.quality ? ' ' + src.quality : ''}` })) });
+      merged.push({
+        id: km._id,
+        title: km.title,
+        home: km.home,
+        away: km.away,
+        competition: km.competition,
+        time: km.time,
+        sources: km.sources.map((src, i) => ({ ...src, label: `K-${i + 1}${src.quality ? ' ' + src.quality : ''}` }))
+      });
     }
   });
+
   return merged.filter(m => m.sources.length > 0);
 }
 
 async function fetchAllMatches() {
-  console.log('[API] Çekiliyor…');
+  console.log('[API] Canlı maçlar çekiliyor…');
   const [falconRaw, kobraRaw] = await Promise.all([fetchServer('falcon'), fetchServer('kobra')]);
-  console.log(`[API] Falcon: ${falconRaw.length} | Kobra: ${kobraRaw.length}`);
 
-  const falconLive = falconRaw.filter(m => isLiveMatch(m));
-  const kobraLive  = kobraRaw.filter(m => isLiveMatch(m));
-
-  const falconList = falconLive.map(m => normalizeMatch(m, 'falcon'));
-  const kobraList  = kobraLive.map(m => normalizeMatch(m, 'kobra'));
+  const falconList = falconRaw.map(m => normalizeMatch(m, 'falcon'));
+  const kobraList  = kobraRaw.map(m => normalizeMatch(m, 'kobra'));
 
   let result = mergeMatches(falconList, kobraList);
   result = result.filter(m => !isExcludedMatch(m));
-  console.log(`[API] Sonuç: ${result.length} canlı maç`);
+  console.log(`[API] Filtrelenmiş birleşik maç sayısı: ${result.length}`);
   return result;
 }
 

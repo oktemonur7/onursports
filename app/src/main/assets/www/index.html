@@ -10,18 +10,15 @@
 
 <div id="app">
 
-  <!-- Header: Logo + Ticker -->
-  <div class="app-header">
-    <img src="logo.jpg" class="app-logo" alt="Onur Sports" />
-    <div class="ticker-wrap">
-      <div class="ticker-inner">
-        <span class="ticker-text">
-          Ünlü futbolcu Hakan Ünal, jet sosyete Ajda hanım, iş insanı Ali bey hepsi Onur Sports'da
-          &nbsp;&nbsp;&nbsp;⚽&nbsp;&nbsp;&nbsp;
-          Ünlü futbolcu Hakan Ünal, jet sosyete Ajda hanım, iş insanı Ali bey hepsi Onur Sports'da
-          &nbsp;&nbsp;&nbsp;⚽&nbsp;&nbsp;&nbsp;
-        </span>
-      </div>
+  <!-- Ticker -->
+  <div class="ticker-wrap">
+    <div class="ticker-inner">
+      <span class="ticker-text">
+        Ünlü futbolcu Hakan Ünal, jet sosyete Ajda hanım, iş insanı Ali bey hepsi Onur Sports'da
+        &nbsp;&nbsp;&nbsp;⚽&nbsp;&nbsp;&nbsp;
+        Ünlü futbolcu Hakan Ünal, jet sosyete Ajda hanım, iş insanı Ali bey hepsi Onur Sports'da
+        &nbsp;&nbsp;&nbsp;⚽&nbsp;&nbsp;&nbsp;
+      </span>
     </div>
   </div>
 
@@ -63,7 +60,6 @@
 <script src="js/ui.js"></script>
 <script>
   window.AppMain = (() => {
-    // İlk yükleme: loading ekranı göster
     async function load() {
       UI.showLoading();
       try {
@@ -75,21 +71,18 @@
       }
     }
 
-    // Sessiz yenileme: mevcut listeyi gizleme, arka planda güncelle
     async function silentLoad() {
       try {
         const matches = await AppAPI.fetchAllMatches();
-        UI.renderMatchList(matches); // loading ekranı göstermeden direkt güncelle
+        UI.renderMatchList(matches);
       } catch (err) {
-        console.warn('[AppMain] Sessiz yenileme başarısız, liste korundu.');
-        // Hata olursa mevcut maçları koru, ekran boşaltma
+        console.warn('[AppMain] Sessiz yenileme başarısız');
       }
     }
 
     function init() {
       UI.init();
       load();
-      // 5 dakikada bir sessiz yenile
       UI.scheduleRefresh(silentLoad, 5 * 60 * 1000);
     }
 
