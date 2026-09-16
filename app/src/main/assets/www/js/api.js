@@ -5,6 +5,10 @@
  */
 
 const API_BASE = 'https://ntv.cx/api/get-matches';
+// TR kaynakları Vercel serverless üzerinden gelir (HLS relay dahil).
+const BETINE_URL = 'https://onusports-webtest.vercel.app/api/betine';
+let _betineCache = { events: [], ts: 0 };
+const BETINE_TTL = 60 * 1000;
 
 function resolveQualityLabel(srcObj) {
   const h = [srcObj.url, srcObj.name, srcObj.label, srcObj.quality, srcObj.title, srcObj.channelName]
@@ -125,7 +129,7 @@ function normalizeMatch(raw) {
   rawSources.forEach((src, idx) => {
     const quality = resolveQualityLabel(src);
     const url = src.url || src.link || src.stream || null;
-    if (url) sources.push({ label: `F-${idx + 1}${quality ? ' ' + quality : ''}`, url, server: 'falcon', quality });
+    if (url) sources.push({ label: `F-${idx + 1}${quality ? ' ' + quality : ''}`, url, server: 'falcon', quality, type: 'iframe' });
   });
 
   return {
@@ -147,7 +151,134 @@ async function fetchAllMatches() {
   let result = falconRaw.map(m => normalizeMatch(m)).filter(m => m.sources.length > 0);
   result = result.filter(m => !isExcludedMatch(m));
   console.log(`[API] Filtrelenmiş maç sayısı: ${result.length}`);
+
+  // TR eşleşmelerini en başa ekle (fail-soft: olmazsa Falcon devam eder)
+  try {
+    const { events } = await fetchBetine();
+    if (events.length > 0) {
+      let hits = 0;
+      result = result.map(m => {
+        const video = findBetineVideo(m, events);
+        if (video) {
+          hits++;
+          m.sources.unshift({ label: 'TR', url: video, server: 'betine', quality: '', type: 'hls' });
+        }
+        return m;
+      });
+      console.log(`[API] TR eşleşmesi: ${hits}/${result.length}`);
+    }
+  } catch (err) {
+    console.warn('[API] TR atlandı:', err.message);
+  }
   return result;
+}
+
+// ─── TR (Betine) eşleştirme ──────────────────────────────────────────
+
+function cleanTeamName(name) {
+  if (!name) return '';
+  return name.toLowerCase()
+    .replace(/[ıİ]/g, 'i').replace(/ç/g, 'c').replace(/ş/g, 's')
+    .replace(/ö/g, 'o').replace(/ü/g, 'u').replace(/ğ/g, 'g')
+    .replace(/^\d{3,4}\s+/, '')
+    .replace(/\b(fc|fk|bk|sk|nk|ff|kulubu|kulübü|klubu|klub|club|saf|rj|sp|pr|sc|rs|ec|ac|ca|cr|cf|cd|cs)\b/gi, '')
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function teamSimilarity(a, b) {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const longer = a.length >= b.length ? a : b;
+  const shorter = a.length >= b.length ? b : a;
+  if (longer.includes(shorter) && shorter.length >= 4) {
+    return 0.9 + 0.1 * (shorter.length / longer.length);
+  }
+  const dist = levenshtein(a, b);
+  return 1 - dist / Math.max(a.length, b.length);
+}
+
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  let prev = new Array(n + 1), cur = new Array(n + 1);
+  for (let j = 0; j <= n; j++) prev[j] = j;
+  for (let i = 1; i <= m; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    [prev, cur] = [cur, prev];
+  }
+  return prev[n];
+}
+
+function clubGuard(a, b) {
+  if (!a || !b) return false;
+  const ta = a.split(' '), tb = b.split(' ');
+  if (ta.length < 2 || tb.length < 2) return false;
+  if (ta[0] !== tb[0]) return false;
+  if (a.includes(b) || b.includes(a)) return false;
+  const ra = ta.slice(1), rb = tb.slice(1);
+  const [short, long] = ra.length <= rb.length ? [ra, rb] : [rb, ra];
+  const covered = short.every(t => long.some(u => teamSimilarity(t, u) >= 0.5));
+  if (covered) return false;
+  return teamSimilarity(a, b) < 0.85;
+}
+
+function parseBetineTeams(name) {
+  if (!name) return null;
+  const parts = name.split(/\s+(?:–|-|vs\.?|v\.?)\s+/i);
+  if (parts.length >= 2) {
+    return { home: parts[0].trim(), away: parts.slice(1).join(' ').trim() };
+  }
+  return null;
+}
+
+function findBetineVideo(match, events) {
+  const t1 = cleanTeamName(match.home);
+  const t2 = cleanTeamName(match.away);
+  if (!t1 || !t2) return null;
+  let best = null, bestScore = 0;
+  for (const ev of events) {
+    if (ev.type && !/futbol|football|soccer/i.test(ev.type)) continue;
+    if (!ev.video) continue;
+    const bt = parseBetineTeams(ev.name);
+    if (!bt) continue;
+    const b1 = cleanTeamName(bt.home);
+    const b2 = cleanTeamName(bt.away);
+    if (!b1 || !b2) continue;
+    if ([b1, b2].sort().join('___') === [t1, t2].sort().join('___')) return ev.video;
+    const orders = [[[t1, b1], [t2, b2]], [[t1, b2], [t2, b1]]];
+    let s = 0, min = 0;
+    for (const [[x1, y1], [x2, y2]] of orders) {
+      if (clubGuard(x1, y1) || clubGuard(x2, y2)) continue;
+      const avg = (teamSimilarity(x1, y1) + teamSimilarity(x2, y2)) / 2;
+      const mn = Math.min(teamSimilarity(x1, y1), teamSimilarity(x2, y2));
+      if (avg > s) { s = avg; min = mn; }
+    }
+    if (s >= 0.68 && min >= 0.4 && s > bestScore) {
+      best = ev.video; bestScore = s;
+    }
+  }
+  return best;
+}
+
+async function fetchBetine() {
+  const now = Date.now();
+  if (_betineCache.events.length > 0 && (now - _betineCache.ts < BETINE_TTL)) {
+    return { events: _betineCache.events };
+  }
+  const res = await fetch(BETINE_URL, {
+    headers: { 'Accept': 'application/json' },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`TR HTTP ${res.status}`);
+  const data = await res.json();
+  _betineCache = { events: data.events || [], ts: now };
+  return { events: _betineCache.events };
 }
 
 window.AppAPI = { fetchAllMatches };
