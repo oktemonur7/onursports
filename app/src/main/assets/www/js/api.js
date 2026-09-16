@@ -157,6 +157,7 @@ async function fetchAllMatches() {
   const falconRaw = await fetchServer('falcon');
   let result = falconRaw.map(m => normalizeMatch(m)).filter(m => m.sources.length > 0);
   result = result.filter(m => !isExcludedMatch(m));
+  result = deduplicateMatches(result);
   console.log(`[API] Filtrelenmiş maç sayısı: ${result.length}`);
 
   // TR eşleşmelerini en başa ekle (fail-soft: olmazsa Falcon devam eder)
@@ -186,6 +187,60 @@ async function fetchAllMatches() {
     console.warn('[API] TR atlandı:', err.message);
   }
   return result;
+}
+
+function mergeSources(target, from) {
+  const existingUrls = new Set(target.sources.map(s => s.url));
+  for (const src of from.sources) {
+    if (!existingUrls.has(src.url)) {
+      target.sources.push(src);
+      existingUrls.add(src.url);
+    }
+  }
+}
+
+function deduplicateMatches(matches) {
+  const map = new Map();
+
+  for (const match of matches) {
+    const t1 = canonicalTeam(match.home);
+    const t2 = canonicalTeam(match.away);
+
+    const key = (t1 && t2)
+      ? [t1, t2].sort().join('___')
+      : canonicalTeam(match.title);
+
+    if (!key) continue;
+
+    if (!map.has(key)) {
+      map.set(key, { ...match, sources: [...match.sources], _t1: t1, _t2: t2 });
+    } else {
+      mergeSources(map.get(key), match);
+    }
+  }
+
+  // 2. tur: yazım farkıyla kaçan tekrarları benzerlikle birleştir
+  const merged = [];
+  for (const m of map.values()) {
+    let placed = false;
+    for (const done of merged) {
+      const s1 = Math.max(
+        teamSimilarity(m._t1, done._t1) + teamSimilarity(m._t2, done._t2),
+        teamSimilarity(m._t1, done._t2) + teamSimilarity(m._t2, done._t1)
+      ) / 2;
+      if (s1 >= 0.88) {
+        mergeSources(done, m);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) merged.push(m);
+  }
+
+  return merged.map(m => {
+    delete m._t1; delete m._t2;
+    return m;
+  });
 }
 
 // ─── TR (Betine) eşleştirme ──────────────────────────────────────────
