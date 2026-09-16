@@ -277,7 +277,14 @@ async function fetchBetine() {
   });
   if (!res.ok) throw new Error(`TR HTTP ${res.status}`);
   const data = await res.json();
-  _betineCache = { events: data.events || [], ts: now };
+  // TV WebView file:// ile çalışır: göreli relay adreslerini mutlak yap
+  const events = (data.events || []).map(ev => {
+    if (ev.video && ev.video.startsWith('/')) {
+      return { ...ev, video: 'https://onusports-webtest.vercel.app' + ev.video };
+    }
+    return ev;
+  });
+  _betineCache = { events, ts: now };
   return { events: _betineCache.events };
 }
 
