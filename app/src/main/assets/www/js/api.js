@@ -14,7 +14,6 @@ function resolveQualityLabel(srcObj) {
   const h = [srcObj.url, srcObj.name, srcObj.label, srcObj.quality, srcObj.title, srcObj.channelName]
     .filter(Boolean).join(' ').toUpperCase();
   if (h.includes('FHD') || h.includes('1080')) return 'FHD';
-  if (h.includes('DLHD') || h.includes('HD') || h.includes('720')) return 'HD';
   return '';
 }
 
@@ -137,7 +136,7 @@ function normalizeMatch(raw) {
   rawSources.forEach((src, idx) => {
     const quality = resolveQualityLabel(src);
     const url = src.url || src.link || src.stream || null;
-    if (url) sources.push({ label: `F-${idx + 1}${quality ? ' ' + quality : ''}`, url, server: 'falcon', quality, type: 'iframe' });
+    if (url) sources.push({ label: `Kaynak ${idx + 1}${quality ? ' · ' + quality : ''}`, url, server: 'falcon', quality, type: 'iframe' });
   });
 
   return {
@@ -171,6 +170,14 @@ async function fetchAllMatches() {
           hits++;
           m.sources.unshift({ label: 'TR', url: video, server: 'betine', quality: '', type: 'hls' });
         }
+        // Falcon kaynaklarını Kaynak 1, 2... diye yeniden numaralandır (TR hep en üstte)
+        let n = 0;
+        m.sources = m.sources.map(s => {
+          if (s.server === 'betine') return s;
+          n++;
+          const q = s.quality || '';
+          return { ...s, label: `Kaynak ${n}${q ? ' · ' + q : ''}` };
+        });
         return m;
       });
       console.log(`[API] TR eşleşmesi: ${hits}/${result.length}`);
@@ -200,6 +207,10 @@ function cleanTeamName(name) {
 const ABBREV = { atl: 'atletico', utd: 'united' };
 
 function canonicalTeam(name) {
+  // 1) Alias sözlüğü (475 takım + varyantlar)
+  const id = aliasId(name);
+  if (id) return 'alias:' + id;
+  // 2) Kısaltma/takma ad kuralları (liste dışı ligler için)
   let t = cleanTeamName(name);
   t = t.split(' ').map(w => ABBREV[w] || w).join(' ');
   if (/\bdeportivo\b/.test(t) && /\b(rc|coruna|lacoruna)\b/.test(t)) {
@@ -208,9 +219,35 @@ function canonicalTeam(name) {
   return t.replace(/\s+/g, ' ').trim();
 }
 
+// aliases.js yoksa sessizce null (liste dışı isimler fuzzy'ye düşer)
+const PARTICLES = new Set(['de','la','du','des','del','di','da','do','der','den','het','van','al','el','los','las']);
+const AFFIX = new Set(['fc','fk','bk','sk','nk','ff','ac','ca','cs','cf','cd','ud','sd','sc','rs','ec','sp','pr','as','us','ss','rc','rcd','rsc','kaa','kv','sv','sl','fsv','sg','afc','kulubu','kulübü','klubu','klub','club','saf','rj','jk']);
+
+function aliasId(name) {
+  if (typeof TEAM_ALIASES === 'undefined' || !name) return null;
+  const spaced = cleanTeamName(name);
+  if (!spaced) return null;
+  const nospace = s => s.replace(/ /g, '');
+  const drop = (words, set) => words.filter(w => !set.has(w)).join(' ');
+  const words = spaced.split(' ');
+  const cands = [
+    nospace(spaced),
+    nospace(drop(words, PARTICLES)),
+    nospace(drop(words, AFFIX)),
+    nospace(drop(drop(words, AFFIX).split(' '), PARTICLES)),
+  ];
+  for (const c of cands) {
+    if (c && TEAM_ALIASES[c]) return TEAM_ALIASES[c];
+  }
+  return null;
+}
+
 function teamSimilarity(a, b) {
   if (!a || !b) return 0;
   if (a === b) return 1;
+  // Alias id'ler sadece birebir tutarsa eşittir (realmadrid/realsociedad karışmasın)
+  const aliasA = a.startsWith('alias:'), aliasB = b.startsWith('alias:');
+  if (aliasA || aliasB) return 0;
   const longer = a.length >= b.length ? a : b;
   const shorter = a.length >= b.length ? b : a;
   if (longer.includes(shorter) && shorter.length >= 4) {
