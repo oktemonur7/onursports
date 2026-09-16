@@ -232,6 +232,10 @@ html, body {
   background: var(--falcon-dim); border-color: var(--falcon);
   box-shadow: 0 0 0 2px var(--falcon), 0 0 10px rgba(79,142,247,0.18);
 }
+.source-btn--betine.source-btn--focused, .source-btn--betine:hover {
+  background: rgba(57,255,20,0.12); border-color: #39ff14;
+  box-shadow: 0 0 0 2px #39ff14, 0 0 10px rgba(57,255,20,0.25);
+}
 .source-label { flex: 1; }
 .source-quality {
   font-size: 10px; font-weight: 800; border-radius: 3px; padding: 2px 6px;
