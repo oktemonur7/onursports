@@ -9,10 +9,10 @@
   --bg:          #0a0a0f;
   --card:        #13131c;
   --card-focus:  #1c1c2e;
-  --accent:      #4f8ef7;
-  --accent-glow: rgba(79,142,247,0.28);
-  --falcon:      #4f8ef7;
-  --falcon-dim:  rgba(79,142,247,0.12);
+  --accent:      #39ff14;
+  --accent-glow: rgba(57,255,20,0.28);
+  --falcon:      #39ff14;
+  --falcon-dim:  rgba(57,255,20,0.12);
   --green:       #4fca79;
   --red:         #f76f6f;
   --text-1:      #ffffff;
@@ -47,8 +47,8 @@ html, body {
 .ticker-wrap {
   flex-shrink: 0;
   overflow: hidden;
-  background: linear-gradient(90deg, rgba(79,142,247,0.15), rgba(79,142,247,0.08));
-  border: 1px solid rgba(79,142,247,0.2);
+  background: linear-gradient(90deg, rgba(57,255,20,0.15), rgba(57,255,20,0.08));
+  border: 1px solid rgba(57,255,20,0.2);
   border-radius: 6px;
   padding: 7px 14px;
   margin: 10px var(--safe) 8px;
@@ -200,7 +200,7 @@ html, body {
 
 #source-popup {
   background: #181826;
-  border: 1px solid rgba(79,142,247,0.22);
+  border: 1px solid rgba(57,255,20,0.22);
   border-radius: 14px;
   padding: 22px 26px;
   min-width: 340px; max-width: 480px;
@@ -230,7 +230,7 @@ html, body {
 }
 .source-btn--falcon.source-btn--focused, .source-btn--falcon:hover {
   background: var(--falcon-dim); border-color: var(--falcon);
-  box-shadow: 0 0 0 2px var(--falcon), 0 0 10px rgba(79,142,247,0.18);
+  box-shadow: 0 0 0 2px var(--falcon), 0 0 10px rgba(57,255,20,0.18);
 }
 .source-btn--betine.source-btn--focused, .source-btn--betine:hover {
   background: rgba(57,255,20,0.12); border-color: #39ff14;
@@ -246,7 +246,7 @@ html, body {
 }
 .source-quality--hd {
   background: var(--falcon-dim); color: var(--falcon);
-  border: 1px solid rgba(79,142,247,0.22);
+  border: 1px solid rgba(57,255,20,0.22);
 }
 
 /* ── Player Overlay ─────────────────────── */
@@ -275,7 +275,7 @@ html, body {
 .player-source-label {
   font-size: 14px; font-weight: 700; color: var(--accent);
   background: var(--falcon-dim);
-  border: 1px solid rgba(79,142,247,0.3);
+  border: 1px solid rgba(57,255,20,0.3);
   border-radius: 6px; padding: 5px 12px;
 }
 
@@ -291,7 +291,7 @@ html, body {
 /* ── Spinner ────────────────────────────── */
 .spinner {
   width: 38px; height: 38px;
-  border: 3px solid rgba(79,142,247,0.15);
+  border: 3px solid rgba(57,255,20,0.15);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.85s linear infinite;

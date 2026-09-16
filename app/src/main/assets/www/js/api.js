@@ -68,7 +68,15 @@ const EXCLUDE_PATTERNS = [
   /\bafl\b/i,
   /\bbaseball\b/i,
   /\bmlb\b/i,
-  /\bcricket\b/i
+  /\bcricket\b/i,
+  /\be-?soccer\b/i,
+  /\besoccer\b/i,
+  /\be-?football\b/i,
+  /\befootball\b/i,
+  /\bsnooker\b/i,
+  /\bice[- ]?hockey\b/i,
+  /\bbuz hokeyi\b/i,
+  /\bbuz-hokeyi\b/i
 ];
 
 function isExcludedMatch(match) {
@@ -187,6 +195,19 @@ function cleanTeamName(name) {
     .trim();
 }
 
+// Kısaltmalar ve takma adlar: atl madrid -> atletico madrid,
+// rc deportivo / deportivo coruna -> deportivo lacoruna
+const ABBREV = { atl: 'atletico', utd: 'united' };
+
+function canonicalTeam(name) {
+  let t = cleanTeamName(name);
+  t = t.split(' ').map(w => ABBREV[w] || w).join(' ');
+  if (/\bdeportivo\b/.test(t) && /\b(rc|coruna|lacoruna)\b/.test(t)) {
+    t = 'deportivo lacoruna';
+  }
+  return t.replace(/\s+/g, ' ').trim();
+}
+
 function teamSimilarity(a, b) {
   if (!a || !b) return 0;
   if (a === b) return 1;
@@ -238,8 +259,8 @@ function parseBetineTeams(name) {
 }
 
 function findBetineVideo(match, events) {
-  const t1 = cleanTeamName(match.home);
-  const t2 = cleanTeamName(match.away);
+  const t1 = canonicalTeam(match.home);
+  const t2 = canonicalTeam(match.away);
   if (!t1 || !t2) return null;
   let best = null, bestScore = 0;
   for (const ev of events) {
@@ -247,8 +268,8 @@ function findBetineVideo(match, events) {
     if (!ev.video) continue;
     const bt = parseBetineTeams(ev.name);
     if (!bt) continue;
-    const b1 = cleanTeamName(bt.home);
-    const b2 = cleanTeamName(bt.away);
+    const b1 = canonicalTeam(bt.home);
+    const b2 = canonicalTeam(bt.away);
     if (!b1 || !b2) continue;
     if ([b1, b2].sort().join('___') === [t1, t2].sort().join('___')) return ev.video;
     const orders = [[[t1, b1], [t2, b2]], [[t1, b2], [t2, b1]]];
