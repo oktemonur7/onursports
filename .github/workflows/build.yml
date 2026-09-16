@@ -22,6 +22,9 @@ jobs:
 
       - name: Android SDK kur
         uses: android-actions/setup-android@v3
+        with:
+          # 'tools' paketi artik yok (hata veriyor); modern paketleri acikca istiyoruz
+          packages: platform-tools "platforms;android-34" "build-tools;34.0.0"
 
       - name: Gradle wrapper çalıştırılabilir yap
         run: chmod +x gradlew
