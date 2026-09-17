@@ -236,7 +236,16 @@ async function fetchAllMatches() {
   } catch (err) {
     console.warn('[API] Sahadan atlandı:', err.message);
   }
+  // Sözlük filtresi: takımlardan biri listedeyse göster
+  result = result.filter(m => isKnownMatch(m));
   return result;
+}
+
+// Maçta sözlükteki takımlardan en az biri varsa göster
+function isKnownMatch(match) {
+  if (!match) return false;
+  return canonicalTeam(match.home).startsWith('alias:') ||
+         canonicalTeam(match.away).startsWith('alias:');
 }
 
 function mergeSources(target, from) {
