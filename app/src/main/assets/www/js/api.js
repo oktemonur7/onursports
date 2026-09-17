@@ -71,7 +71,12 @@ const EXCLUDE_PATTERNS = [
   /\bsnooker\b/i,
   /\bice[- ]?hockey\b/i,
   /\bbuz hokeyi\b/i,
-  /\bbuz-hokeyi\b/i
+  /\bbuz-hokeyi\b/i,
+  /u23/i, /u21/i, /u19/i,
+  /\bgeneration\b/i, /\bnextgen\b/i, /\bnext-gen\b/i,
+  /\byouth\b/i, /\bacademy\b/i,
+  /\breserves?\b/i, /\brezerv\b/i,
+  /\(\s*res\s*\)/i, /\bii\b/i
 ];
 
 function isExcludedMatch(match) {
