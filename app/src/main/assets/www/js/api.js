@@ -187,8 +187,8 @@ async function fetchAllMatches() {
             url: `${domain}/channel?id=${hit.id}`,
             server: 'betist', quality: '', type: 'iframe',
           });
-          // Falcon kaynaklarını Kaynak 1, 2... diye yeniden numaralandır
-          let n = 0;
+          // Falcon kaynaklarını kanalın ardından numaralandır (Kaynak 1 teke düşsün)
+          let n = m.sources.filter(s => s.server === 'betist').length;
           m.sources = m.sources.map(s => {
             if (s.server === 'betist') return s;
             n++;
@@ -301,6 +301,11 @@ function deduplicateMatches(matches) {
 
   return merged.map(m => {
     delete m._t1; delete m._t2;
+    // Birleşen kaynakları baştan numaralandır (Kaynak 1, 1 diye tekrar etmesin)
+    m.sources = m.sources.map((s, idx) => {
+      const q = s.quality || '';
+      return { ...s, label: `Kaynak ${idx + 1}${q ? ' · ' + q : ''}` };
+    });
     return m;
   });
 }
