@@ -225,7 +225,10 @@ async function fetchAllMatches() {
           return (e1 && e2) && [e1, e2].sort().join('___') === key;
         }) : null;
         if (existing) {
-          mergeSources(existing, extra);
+          // Zaten kanal kaynağı varsa tekrar ekleme (çift Kaynak 1 olmasın)
+          const extraFiltered = { ...extra, sources: extra.sources.filter(s =>
+            s.server !== 'betist' || !existing.sources.some(e => e.server === 'betist')) };
+          mergeSources(existing, extraFiltered);
           existing.sources.sort((a, b) =>
             (a.server === 'betist' ? 0 : 1) - (b.server === 'betist' ? 0 : 1));
         } else {
