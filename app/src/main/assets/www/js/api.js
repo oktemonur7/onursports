@@ -440,7 +440,7 @@ function clubGuard(a, b) {
 
 // ─── Sahadan TV programı (Vercel serverless) ─────────────────────────────
 // Hangi maç hangi kanalda: Kaynak 1 o kanal olur.
-const SAHADAN_URL = 'https://onusports-webtest.vercel.app/api/sahadan';
+const SAHADAN_URL = 'https://onursports.vercel.app/api/sahadan';
 let _sahadanCache = { program: [], ts: 0 };
 const SAHADAN_TTL = 120 * 1000;
 
