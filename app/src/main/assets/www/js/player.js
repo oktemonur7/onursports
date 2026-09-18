@@ -53,6 +53,7 @@ const Player = (() => {
   function open(matchTitle, source, onClose) {
     close();
     onCloseCallback = onClose;
+    console.log('[Player] open:', matchTitle, '|', source.label, '|', (source.url || '').slice(0, 120));
 
     playerOverlay = _createOverlay();
     document.body.appendChild(playerOverlay);
