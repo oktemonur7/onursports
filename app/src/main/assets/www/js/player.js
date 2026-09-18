@@ -54,6 +54,11 @@ const Player = (() => {
     close();
     onCloseCallback = onClose;
     console.log('[Player] open:', matchTitle, '|', source.label, '|', (source.url || '').slice(0, 120));
+    try {
+      if (typeof TvBridge !== 'undefined' && TvBridge.log) {
+        TvBridge.log('[Player] open: ' + matchTitle + ' | ' + source.label + ' | ' + (source.url || '').slice(0, 150));
+      }
+    } catch (_) {}
 
     playerOverlay = _createOverlay();
     document.body.appendChild(playerOverlay);
