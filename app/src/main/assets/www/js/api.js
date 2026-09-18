@@ -520,6 +520,7 @@ function mapSahadanChannels(channels) {
   for (const c of channels || []) {
     const key = normChannel(c);
     if (key === 'tabii') continue; // tek başına "tabii" başka şey, pas geç
+    if (key === 'ssportplus') continue; // tek başına S Sport Plus kullanılmaz
     const id = SAHADAN_TO_BETIST[key];
     if (id) return { id, name: c };
   }
