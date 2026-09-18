@@ -5,11 +5,11 @@
  },
  {
   "name": "beIN Sports 2",
-  "id": "b3"
+  "id": "b2"
  },
  {
   "name": "beIN Sports 3",
-  "id": "b2"
+  "id": "b3"
  },
  {
   "name": "beIN Sports 4",
@@ -86,9 +86,5 @@
  {
   "name": "Tivibu Spor 4",
   "id": "t4"
- },
- {
-  "name": "Test",
-  "id": "tt4"
  }
 ]
