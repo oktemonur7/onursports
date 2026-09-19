@@ -350,6 +350,7 @@ const EXTRA_ALIASES = {
   yelimaysemey: 'yelimay', elimaysemey: 'yelimay',
   alqana: 'alqana', elqanah: 'alqana', elqana: 'alqana', qanah: 'alqana',
   welcoelekter: 'tartuwelco', tartuwelco: 'tartuwelco', tartujkwelco: 'tartuwelco',
+  nuremberg: 'nurnberg',
   hoffenheim: 'tsghoffenheim', tsghoffenheim: 'tsghoffenheim',
   salzburg: 'salzburg', rbsalzburg: 'salzburg', redbullsalzburg: 'salzburg',
 };
@@ -365,9 +366,11 @@ function aliasIdSpaced(spaced) {
   const drop = (words, set) => words.filter(w => !set.has(w)).join(' ');
   const words = spaced.split(' ');
   const single = words.map(w => w === 'r' ? 'real' : w).join(' ');
+  const noyear = words.filter(w => !/^\d{3,4}$/.test(w)).join(' ');
   const cands = [
     nospace(spaced),
     nospace(single),
+    nospace(noyear),
     nospace(drop(words, PARTICLES)),
     nospace(drop(words, AFFIX)),
     nospace(drop(drop(words, AFFIX).split(' '), PARTICLES)),
