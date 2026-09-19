@@ -385,8 +385,9 @@ const EXTRA_ALIASES = {
   alqana: 'alqana', elqanah: 'alqana', elqana: 'alqana', qanah: 'alqana',
   welcoelekter: 'tartuwelco', tartuwelco: 'tartuwelco', tartujkwelco: 'tartuwelco',
   nuremberg: 'nurnberg',
-  hoffenheim: 'tsghoffenheim', tsghoffenheim: 'tsghoffenheim',
-  salzburg: 'salzburg', rbsalzburg: 'salzburg', redbullsalzburg: 'salzburg',
+  intermilan: 'internazionalemilano',
+  youngboysbern: 'bscyoungboys',
+  servettegeneva: 'servette',
 };
 
 function aliasId(name) {
