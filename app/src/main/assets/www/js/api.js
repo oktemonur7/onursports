@@ -180,7 +180,7 @@ async function fetchAllMatches() {
         const hit = findSahadanChannel(m, program);
         if (hit) {
           hits++;
-          if (hit.progIdx != null) usedProg.add(hit.progIdx);
+          if (hit.progIdx != null) { usedProg.add(hit.progIdx); m._progIdx = hit.progIdx; }
           const ch = BETIST_IDS.find(c => c.id === hit.id);
           m.sources.unshift({
             label: `Kaynak 1 · ${ch ? ch.name : hit.name}`,
@@ -199,6 +199,40 @@ async function fetchAllMatches() {
         return m;
       });
       console.log(`[API] Kanal eşleşmesi: ${hits}/${result.length}`);
+      // Aynı program kaydına bakan kartlar aynı maçtır → birleştir
+      const byProg = new Map();
+      result.forEach(mm => {
+        if (mm._progIdx == null) return;
+        if (!byProg.has(mm._progIdx)) byProg.set(mm._progIdx, []);
+        byProg.get(mm._progIdx).push(mm);
+      });
+      for (const group of byProg.values()) {
+        if (group.length < 2) continue;
+        const [first, ...rest] = group;
+        for (const other of rest) {
+          mergeSources(first, other);
+          const ix = result.indexOf(other);
+          if (ix >= 0) result.splice(ix, 1);
+        }
+        let n = first.sources.filter(s => s.server === 'betist').length;
+        const seenB = new Set();
+        first.sources = first.sources.filter(s => {
+          if (s.server === 'betist') {
+            if (seenB.has(s.url)) return false;
+            seenB.add(s.url);
+            return true;
+          }
+          return true;
+        });
+        first.sources = first.sources.map(s => {
+          if (s.server === 'betist') return s;
+          n++;
+          const q = s.quality || '';
+          return { ...s, label: `Kaynak ${n}${q ? ' · ' + q : ''}` };
+        });
+        delete first._progIdx;
+      }
+      result.forEach(mm => { delete mm._progIdx; });
       // Falcon'da olmayıp programda olan CANLI maçları ekstra kart olarak ekle
       program.forEach((p, pi) => {
         if (usedProg.has(pi)) return;
