@@ -376,7 +376,7 @@ function canonicalTeam(name) {
 
 // aliases.js yoksa sessizce null (liste dışı isimler fuzzy'ye düşer)
 const PARTICLES = new Set(['de','la','du','des','del','di','da','do','der','den','het','van','al','el','los','las']);
-const AFFIX = new Set(['fc','fk','bk','sk','nk','ff','ac','ca','cs','cf','cd','ud','sd','sc','rs','ec','sp','pr','as','us','ss','rc','rcd','rsc','kaa','kv','sv','sl','fsv','sg','afc','kulubu','kulübü','klubu','klub','club','saf','rj','jk']);
+const AFFIX = new Set(['fc','fk','bk','sk','nk','ff','ac','ca','cs','cf','cd','ud','sd','sc','rs','ec','sp','pr','as','us','ss','es','rc','rcd','rsc','kaa','kv','sv','sl','fsv','sg','afc','kulubu','kulübü','klubu','klub','club','saf','rj','jk']);
 
 // Elle eklenen özel eşleşmeler (jenerik kuralların yakalayamadıkları)
 const EXTRA_ALIASES = {
@@ -388,6 +388,9 @@ const EXTRA_ALIASES = {
   intermilan: 'internazionalemilano',
   youngboysbern: 'bscyoungboys',
   servettegeneva: 'servette',
+  angers: 'angerssco',
+  troyesac: 'estactroyes',
+  herthaberlin: 'herthabsc',
 };
 
 function aliasId(name) {
@@ -400,7 +403,7 @@ function aliasIdSpaced(spaced) {
   const nospace = s => s.replace(/ /g, '');
   const drop = (words, set) => words.filter(w => !set.has(w)).join(' ');
   const words = spaced.split(' ');
-  const single = words.map(w => w === 'r' ? 'real' : w).join(' ');
+  const single = words.map(w => w === 'r' ? 'real' : w === 'd' ? 'dynamo' : w).join(' ');
   const noyear = words.filter(w => !/^\d{3,4}$/.test(w)).join(' ');
   const cands = [
     nospace(spaced),
