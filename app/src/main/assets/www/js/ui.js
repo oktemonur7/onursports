@@ -47,9 +47,7 @@ const UI = (() => {
         : '';
       if (match.isChannels) {
         titleHtml = `📺 ${homeText}`;
-        timeHtml = match.sources?.length
-          ? `<div class="card-time">${match.sources.length} kanal</div>`
-          : '';
+        timeHtml = '';
       }
 
       card.innerHTML = `<div class="card-title">${titleHtml}</div>${timeHtml}`;
@@ -147,6 +145,8 @@ const UI = (() => {
     btns.forEach(b => b.classList.remove('source-btn--focused'));
     btns[idx]?.classList.add('source-btn--focused');
     btns[idx]?.focus({ preventScroll: true });
+    // Uzun listede (kanallar) odaklanan butona kaydır
+    try { btns[idx]?.scrollIntoView({ block: 'nearest' }); } catch (_) {}
   }
 
   function playSource(sourceIdx) {
