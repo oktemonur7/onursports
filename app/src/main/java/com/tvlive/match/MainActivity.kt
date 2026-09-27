@@ -5,12 +5,14 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Base64
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.webkit.*
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
+import java.io.ByteArrayInputStream
 
 class MainActivity : AppCompatActivity() {
 
@@ -94,6 +96,19 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 return false
+            }
+
+            // Yayın sayfasındaki watermark rozetini (logo.png) şeffaf pikselle değiştir
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                val url = request.url?.toString() ?: return null
+                if (url.substringBefore('?').endsWith("/logo.png", ignoreCase = true)) {
+                    val px = Base64.decode(
+                        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+                        Base64.DEFAULT
+                    )
+                    return WebResourceResponse("image/png", null, 200, "OK", mutableMapOf(), ByteArrayInputStream(px))
+                }
+                return null
             }
 
             override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
