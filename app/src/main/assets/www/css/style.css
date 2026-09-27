@@ -117,6 +117,12 @@ html, body {
   box-shadow: 0 0 0 2px var(--accent), 0 0 18px var(--accent-glow);
 }
 
+/* 7/24 Canlı kartı — maç kartı görünümünde, vurgulu */
+.match-card--channels {
+  border-color: rgba(57,255,20,0.35);
+  background: rgba(57,255,20,0.06);
+}
+
 .card-title {
   width: 100%;
   text-align: center;
@@ -215,7 +221,7 @@ html, body {
   font-size: 11px; font-weight: 600; color: var(--text-3);
   text-transform: uppercase; letter-spacing: 1px; margin-bottom: 9px;
 }
-#popup-source-list { display: flex; flex-direction: column; gap: 7px; }
+#popup-source-list { display: flex; flex-direction: column; gap: 7px; max-height: 60vh; overflow-y: auto; }
 
 /* ── Source Button ───────────────────────── */
 .source-btn {

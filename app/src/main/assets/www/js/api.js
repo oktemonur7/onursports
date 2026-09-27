@@ -569,6 +569,34 @@ function mapSahadanChannels(channels) {
 }
 
 // ─── Betist kanal listesi (domain sık değişir: açılışta canlı olan bulunur) ──
+// ─── Betist kanal listesi (admin panelden canlı liste, yedek: gömülü liste) ──
+const CHANNELS_JSON = 'https://raw.githubusercontent.com/oktemonur7/onursports/main/channels.json';
+let _channelList = null, _channelListTs = 0;
+const CHANNEL_LIST_TTL = 5 * 60 * 1000;
+
+async function channelList() {
+  const now = Date.now();
+  if (_channelList && (now - _channelListTs < CHANNEL_LIST_TTL)) return _channelList;
+  try {
+    const res = await fetch(CHANNELS_JSON + '?t=' + now, {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const arr = await res.json();
+    if (Array.isArray(arr) && arr.length > 0 && arr.every(c => c && c.name && c.id)) {
+      _channelList = arr;
+      _channelListTs = now;
+      return _channelList;
+    }
+    throw new Error('liste hatalı');
+  } catch (err) {
+    console.warn('[API] Canlı kanal listesi alınamadı, gömülü liste:', err.message);
+    if (!_channelList) { _channelList = BETIST_IDS; _channelListTs = now; }
+    return _channelList;
+  }
+}
+
 const BETIST_IDS = [
   { name: 'beIN Sports 1', id: 'zirve' },
   { name: 'beIN Sports 2', id: 'b2' },
@@ -622,4 +650,19 @@ async function betistDomain() {
   return _betistDomain;
 }
 
-window.AppAPI = { fetchAllMatches };
+async function getBetistChannels() {
+  try {
+    const d = await betistDomain();
+    const list = await channelList();
+    return list.map(c => ({
+      name: c.name, id: c.id,
+      url: `${d}/channel?id=${c.id}`,
+      type: 'iframe', server: 'betist',
+    }));
+  } catch (err) {
+    console.warn('[API] Betist kanalları alınamadı:', err.message);
+    return [];
+  }
+}
+
+window.AppAPI = { fetchAllMatches, getBetistChannels };

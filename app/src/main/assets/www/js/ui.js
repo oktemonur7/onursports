@@ -31,7 +31,7 @@ const UI = (() => {
 
     matches.forEach((match, idx) => {
       const card = document.createElement('div');
-      card.className = 'match-card';
+      card.className = 'match-card' + (match.isChannels ? ' match-card--channels' : '');
       card.dataset.idx = idx;
       card.tabIndex = 0;
       card.setAttribute('role', 'button');
@@ -39,12 +39,18 @@ const UI = (() => {
       const homeText = escHtml(match.home || match.title || '');
       const awayText = escHtml(match.away || '');
       // Boşluk bırakmadan title oluştur (template literal whitespace önlemi)
-      const titleHtml = awayText
+      let titleHtml = awayText
         ? `${homeText}<span class="vs">vs</span>${awayText}`
         : homeText;
-      const timeHtml = match.time
+      let timeHtml = match.time
         ? `<div class="card-time">${escHtml(match.time)}</div>`
         : '';
+      if (match.isChannels) {
+        titleHtml = `📺 ${homeText}`;
+        timeHtml = match.sources?.length
+          ? `<div class="card-time">${match.sources.length} kanal</div>`
+          : '';
+      }
 
       card.innerHTML = `<div class="card-title">${titleHtml}</div>${timeHtml}`;
       card.addEventListener('click', () => openPopup(idx));
@@ -101,7 +107,9 @@ const UI = (() => {
       : popupMatch.title || '';
 
     $('popup-match-title').textContent = title;
-    $('popup-match-info').textContent = '';
+    $('popup-match-info').textContent = popupMatch.isChannels
+      ? `${popupMatch.sources.length} kanal · 7/24 canlı`
+      : '';
 
 
     const sourceList = $('popup-source-list');

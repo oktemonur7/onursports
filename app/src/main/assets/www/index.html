@@ -62,12 +62,40 @@
 <script src="js/ui.js"></script>
 <script>
   window.AppMain = (() => {
+    function withChannelsCard(matches, channels) {
+      const list = [...(matches || [])];
+      if (channels && channels.length > 0) {
+        list.unshift({
+          _id: '__channels__',
+          title: '7/24 Canlı',
+          home: '7/24 Canlı',
+          away: '',
+          competition: '',
+          category: '',
+          tournament: '',
+          time: '',
+          isChannels: true,
+          sources: channels.map(c => ({
+            label: c.name,
+            url: c.url,
+            server: 'betist',
+            quality: '',
+            type: 'iframe',
+          })),
+        });
+      }
+      return list;
+    }
+
     async function load() {
       UI.showLoading();
       try {
-        const matches = await AppAPI.fetchAllMatches();
+        const [matches, channels] = await Promise.all([
+          AppAPI.fetchAllMatches(),
+          AppAPI.getBetistChannels ? AppAPI.getBetistChannels() : Promise.resolve([]),
+        ]);
         UI.hideLoading();
-        UI.renderMatchList(matches);
+        UI.renderMatchList(withChannelsCard(matches, channels));
       } catch (err) {
         UI.showError('Maçlar yüklenemedi.');
       }
@@ -75,8 +103,11 @@
 
     async function silentLoad() {
       try {
-        const matches = await AppAPI.fetchAllMatches();
-        UI.renderMatchList(matches);
+        const [matches, channels] = await Promise.all([
+          AppAPI.fetchAllMatches(),
+          AppAPI.getBetistChannels ? AppAPI.getBetistChannels() : Promise.resolve([]),
+        ]);
+        UI.renderMatchList(withChannelsCard(matches, channels));
       } catch (err) {
         console.warn('[AppMain] Sessiz yenileme başarısız');
       }
